@@ -131,6 +131,49 @@ LevelAndCharge = $AD
 *	0-5: Charge
 *	6-7: Level
 *
+eikiX = $AE
+*
+*	0-6: X position
+*	7  : Direction
+*
+eikiY = $AF
+*	
+*	0-3: Y Position
+*	4-7: Free
+*
+eikiSettings = $B0
+*	0-1: 3 counter
+*	2-4: Color Index
+*	
+*	4: Moving
+*	5: Attack
+*	6: Spell
+*	7: Dead
+*
+eikiSettings2 = $B1
+*
+*	0-3: SpriteIndex
+*	4-7: Free
+*
+
+
+Eiki_Height = 23
+NumberOfLines = 36
+StickColor = $38
+
+	LDA	#62
+	STA	eikiX
+
+	LDA	#5
+	STA	eikiY
+
+	LDA	#%01100000
+	STA	temp18
+	JSR	Bank1_SoundPlayer
+
+	LDA	#0
+	STA	eikiSettings
+	STA	eikiSettings2
 
 	JMP	WaitUntilOverScanTimerEndsBank1
 
@@ -175,11 +218,144 @@ OverScanBank1
 *
 
 
+	BIT	eikiSettings
+	BMI	Bank1_EikiDied
+	BVC	Bank1_EikiNoSpell
 
+	LDA	counter
+	AND	#%00000001
+	CMP	#%00000001
+	BNE	Bank1_EikiDied
 
+Bank1_EikiNoSpell
+	LDA	eikiY
+	AND	#%00001111		
+	TAX
+	LDA	SWCHA
+	ASL
+	ASL	
+	BMI	Bank1_NoIncY
+	TXA
+	CMP	#14
+	BCS	Bank1_NotMovedHor
+	CLC
+	ADC	#1
+	JMP	Bank1_MovedHor
+Bank1_NoIncY
+	ASL	
+	BMI	Bank1_NotMovedHor
+	TXA
+	CMP	#1
+	BEQ	Bank1_NotMovedHor
+	SEC
+	SBC	#1
+Bank1_MovedHor
+	STA	eikiY
+Bank1_NotMovedHor
+	
+	LDA	eikiX
+	AND	#%01111111
+	BIT	SWCHA
+	BVS	Bank1_NoMoveLeft
+	CMP	#0
+	BEQ	Bank1_NoDecX
+	SEC
+	SBC	#1
+Bank1_NoDecX
+	AND	#%01111111
+	JMP	Bank1_NoMoveRight
+Bank1_NoMoveLeft
+	BMI	Bank1_NoMove
+	CMP	#120
+	BEQ	Bank1_NoIncX
+	CLC
+	ADC	#1
+Bank1_NoIncX
+	ORA	#%10000000
+Bank1_NoMoveRight
+	STA	eikiX
 
+	LDA	eikiSettings
+	ORA	#%00010000
+	JMP	Bank1_Moved
+Bank1_NoMove
+	LDA	eikiSettings
+	AND	#%11101111
+Bank1_Moved
+	STA	eikiSettings
 
+Bank1_EikiDied
 
+	LDA	counter
+	AND	#7
+	CMP	#7
+	BNE	Bank1_DontINCSpriteIndex
+	
+	LDA	eikiSettings
+	AND	#%11111100
+	STA	temp01
+
+	LDA	eikiSettings
+	AND	#%00000011
+	CLC
+	ADC	#1
+	CMP	#3
+	BCC	Bank1_SmallerThan3
+	LDA	#0
+Bank1_SmallerThan3
+	ORA	temp01
+	STA	eikiSettings
+Bank1_DontINCSpriteIndex
+
+*
+*	Priority: Dead, Spell, Attack, Moving, Standing
+*
+	LDA	eikiSettings
+	BMI	Bank1_EikiDead
+	ASL
+	BMI	Bank1_EikiSpell
+	ASL	
+	BMI	Bank1_EikiAttack
+	ASL	
+	BMI	Bank1_EikiMoving
+
+	LDA	eikiSettings
+	AND	#%00000011
+	STA	temp01
+
+	LDA	eikiSettings2
+	AND	#$F0
+	ORA	temp01
+	STA	eikiSettings2
+*
+*	Set colorpointer to 0
+*
+	JMP	Bank1_EikiCoorPointer0	
+Bank1_EikiDead
+
+Bank1_EikiSpell
+
+Bank1_EikiAttack
+
+Bank1_EikiMoving
+	LDA	eikiX
+	ROL
+	ROL
+	AND	#1
+	CLC	
+	ADC	#3
+	STA	temp01
+	LDA	eikiSettings2
+	AND	#$F0
+	ORA	temp01
+	STA	eikiSettings2
+
+Bank1_EikiCoorPointer0
+	LDA	eikiSettings
+	AND	#%11110011
+	STA	eikiSettings
+
+Bank1_EikiGotSpritePointer
 
 *VSYNC
 *----------------------------7
@@ -222,7 +398,10 @@ WaitUntilOverScanTimerEndsBank1
 *
 VBLANKBank1
 
-
+	LDA	#%00000000
+	STA	temp18
+	STA	temp19
+	JSR	Bank1_SoundPlayer
 
 *SkipIfNoGameSet - VBLANK
 *---------------------------------
@@ -255,9 +434,182 @@ VBlankEndBank1
 	STA	COLUP1	
 	STA	COLUPF	
 *
+*	TestLines should be removed from finished product.
 *
+
+	JSR	Bank1_TestLines
+****	JMP 	Bank1_Main_Ended
+
+Bank1_Eiki_Field
+	LDA	#0
+	STA	WSYNC
+	STA	COLUBK
+	STA	HMCLR
+	STA	CXCLR 
+	STA	PF0
+
+**	STA	PF1
+**	STA	PF2
+**	STA	GRP0
+**	STA	GRP1
+**	STA	ENABL
+**	STA	ENAM0
+**	STA	ENAM1
+
+	LDA	#$0F
+	STA	COLUPF
 *
+*	PF  : Mirrored, before the player
+*	Ball: 2x
 *
+	LDA	#%00010101
+	STA	CTRLPF
+*
+*	Sprites
+*
+	LDA	eikiX
+	AND	#%01111111
+	STA	temp01
+	STA	temp02
+
+	CLC
+	ADC	#2
+*
+*	Bullets and Ball
+*
+	STA	temp03
+	STA	temp04	
+	STA	temp05	
+
+	LDX	#4
+Bank1_setforAllX
+	LDA	temp01,x
+	JSR	Bank1_HorPos
+	DEX	
+	BPL 	Bank1_setforAllX
+
+
+	ldx	#4		; bl
+Bank1_setFine
+   	lda	temp01,x
+	CLC
+	ADC	#16
+	TAY
+   	lda	Bank1_FineAdjustTable,y
+   	sta	HMP0,x		
+	DEX
+	BPL	Bank1_setFine
+
+	STA	WSYNC
+	STA	HMOVE
+
+*
+*	temp01: Eiki's P0 pointer
+*	temp03: Eiki's P1 pointer
+*	temp05: Eiki's P0 Color pointer
+*	temp07: Eiki's P1 Color pointer
+*	temp09: Eiki's Y
+*
+	
+	LDA	eikiSettings2
+	AND	#%00001111
+	ASL
+	TAX					; 9
+
+	LDA	Eiki_Sprite_Pointers_P0,x
+	STA	temp01
+	LDA	Eiki_Sprite_Pointers_P0+1,x
+	STA	temp02				; 16 (25)
+
+	LDA	Eiki_Sprite_Pointers_P1,x
+	STA	temp03
+	LDA	Eiki_Sprite_Pointers_P1+1,x
+	STA	temp04				; 16 (41)
+
+	LDA	eikiSettings
+	AND	#%00001100
+	LSR					 
+	TAX					; 9 (48)
+
+	LDA	Eiki_Sprite_Color_Pointers_P0,x		
+	STA	temp05
+	LDA	Eiki_Sprite_Color_Pointers_P0+1,x
+	STA	temp06				; 16 (64)
+
+	LDA	Eiki_Sprite_Color_Pointers_P1,x
+	STA	temp07
+	LDA	Eiki_Sprite_Color_Pointers_P1+1,x
+	STA	temp08				; 16 (4)
+
+	LDA	eikiY
+	AND	#%00011111
+	CLC
+	ADC	#Eiki_Height
+	STA	temp19	
+
+	LDX	#NumberOfLines			; 2 
+
+*
+*	Should be 2 lines kernel
+*
+
+Bank1_MainLoop
+	STA	WSYNC				; 76
+	
+	sleep	50
+*
+*	Check if reached Eiki.
+*
+	LDA	#Eiki_Height
+	DCP	temp19
+	BCC	Bank1_NoEiki	
+
+	LDY	temp19
+
+	LDA	(temp01),y
+	STA	GRP0
+	
+	LDA	(temp03),y
+	STA	GRP1
+	
+	LDA	(temp05),y
+	STA	COLUP0
+
+	LDA	(temp07),y
+	STA	COLUP1
+
+	LDA	#0
+	STA	ENAM0
+	STA	ENAM1
+	STA	NUSIZ0
+	STA	NUSIZ1
+
+	JMP	Bank1_WasEiki
+Bank1_NoEiki
+	LDA	#0
+	STA	GRP0
+	STA	GRP1
+	
+	sleep	20
+
+	LDA	#StickColor
+	STA	COLUP0
+
+Bank1_WasEiki
+
+
+
+	DEX	
+	BPL	Bank1_MainLoop
+
+	LDA	#0
+	STA	WSYNC
+	STA	PF1
+	STA	PF2
+	STA	GRP0
+	STA	GRP1
+Bank1_Main_Ended
+	JSR	Bank1_TestLines
 
 
 	LDA	#0
@@ -289,9 +641,401 @@ Bank1_Return_JumpTable
 	BYTE	#>Bank3_Return-1
 	BYTE	#<Bank3_Return-1
 
+	_align	16
+Bank1_FineAdjustTable
+	byte	#$80
+	byte	#$70
+	byte	#$60
+	byte	#$50
+	byte	#$40
+	byte	#$30
+	byte	#$20
+	byte	#$10
+	byte	#$00
+	byte	#$f0
+	byte	#$e0
+	byte	#$d0
+	byte	#$c0
+	byte	#$b0
+	byte	#$a0
+	byte	#$90
+
+*
+*	Height      = 24
+*	NumOfFrames = 5
+*
+
+	_align	10
+Eiki_Sprite_Pointers_P0
+	byte 	#<Eiki_Sprite_Stand_P0_0
+	byte	#>Eiki_Sprite_Stand_P0_0
+	byte 	#<Eiki_Sprite_Stand_P0_1
+	byte	#>Eiki_Sprite_Stand_P0_1
+	byte 	#<Eiki_Sprite_Stand_P0_2
+	byte	#>Eiki_Sprite_Stand_P0_2
+	byte 	#<Eiki_Sprite_Move_P0_0
+	byte	#>Eiki_Sprite_Move_P0_0
+	byte 	#<Eiki_Sprite_Move_P0_1
+	byte	#>Eiki_Sprite_Move_P0_1
+
+	_align	10
+Eiki_Sprite_Pointers_P1
+	byte 	#<Eiki_Sprite_Stand_P1_0
+	byte	#>Eiki_Sprite_Stand_P1_0
+	byte 	#<Eiki_Sprite_Stand_P1_1
+	byte	#>Eiki_Sprite_Stand_P1_1
+	byte 	#<Eiki_Sprite_Stand_P1_2
+	byte	#>Eiki_Sprite_Stand_P1_2
+	byte 	#<Eiki_Sprite_Move_P1_0
+	byte	#>Eiki_Sprite_Move_P1_0
+	byte 	#<Eiki_Sprite_Move_P1_1
+	byte	#>Eiki_Sprite_Move_P1_1
+
+	_align	2
+Eiki_Sprite_Color_Pointers_P0
+	byte 	#<Eiki_Color_Stand_Move_P0
+	byte	#>Eiki_Color_Stand_Move_P0
+
+	_align	2
+Eiki_Sprite_Color_Pointers_P1
+	byte 	#<Eiki_Color_Stand_Move_P1
+	byte	#>Eiki_Color_Stand_Move_P1
+
+
+	_align	24
+
+Eiki_Sprite_Stand_P1_0
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%10100101
+	byte	#%00111111
+	byte	#%10011101
+	byte	#%01111110
+	byte	#%00111100
+	byte	#%00111100
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%00111100
+	byte	#%00111100
+	byte	#%01101100
+	byte	#%01010110
+	byte	#%01011010
+	byte	#%01100000
+	byte	#%11111000
+	byte	#%10011000	
+
+	_align	24
+
+Eiki_Sprite_Stand_P1_1
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01011001
+	byte	#%01011110
+	byte	#%01001100
+	byte	#%00111111
+	byte	#%00111100
+	byte	#%00111100
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%00111100
+	byte	#%00111100
+	byte	#%00101110
+	byte	#%01010111
+	byte	#%01101000
+	byte	#%01111000
+	byte	#%11111100
+	byte	#%10011000	
+
+	_align	24
+Eiki_Sprite_Stand_P1_2
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%01100110
+	byte	#%10011010
+	byte	#%10010110
+	byte	#%11011010
+	byte	#%00111110
+	byte	#%00111100
+	byte	#%00111100
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%00111100
+	byte	#%00111100
+	byte	#%10111110
+	byte	#%00010110
+	byte	#%00110110
+	byte	#%01100010
+	byte	#%11110000
+	byte	#%10011000	; (2)
+
+	_align	24
+
+Eiki_Sprite_Move_P1_0
+	byte	#%01100110
+	byte	#%00110011
+	byte	#%00110011
+	byte	#%00110011
+	byte	#%01100110
+	byte	#%11101110
+	byte	#%01110110
+	byte	#%00111111
+	byte	#%01101001
+	byte	#%01111010
+	byte	#%00110101
+	byte	#%00011110
+	byte	#%00001110
+	byte	#%00001100
+	byte	#%00001110
+	byte	#%00001110
+	byte	#%00001110
+	byte	#%00011110
+	byte	#%01101101
+	byte	#%01011010
+	byte	#%01001101
+	byte	#%01110000
+	byte	#%11111000
+	byte	#%10011000
+
+	_align	24	
+Eiki_Sprite_Move_P1_1
+	byte	#%01100110
+	byte	#%11001100
+	byte	#%11001100
+	byte	#%11001100
+	byte	#%01100110
+	byte	#%01110111
+	byte	#%01101110
+	byte	#%11111100
+	byte	#%01001010
+	byte	#%10101110
+	byte	#%01010100
+	byte	#%00111000
+	byte	#%01110000
+	byte	#%00110000
+	byte	#%01110000
+	byte	#%01110000
+	byte	#%01110000
+	byte	#%01111000
+	byte	#%01011010
+	byte	#%01101110
+	byte	#%10110010
+	byte	#%01000000
+	byte	#%11100000
+	byte	#%10000000	; (4)
+
+	_align	24
+
+Eiki_Color_Stand_Move_P1
+	byte	#$04
+	byte	#$0a
+	byte	#$0e
+	byte	#$0e
+	byte	#$0e
+	byte	#$0e
+	byte	#$3e
+	byte	#$3e
+	byte	#$04
+	byte	#$88
+	byte	#$86
+	byte	#$84
+	byte	#$86
+	byte	#$44
+	byte	#$86
+	byte	#$88
+	byte	#$86
+	byte	#$84
+	byte	#$d6
+	byte	#$D8
+	byte	#$08
+	byte	#$82
+	byte	#$86
+	byte	#$84
+
+	_align	24
+
+Eiki_Sprite_Stand_P0_0
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%01011010
+	byte	#%11000000
+	byte	#%01100010
+	byte	#%00000000
+	byte	#%11000011
+	byte	#%01000011
+	byte	#%11000010
+	byte	#%11000011
+	byte	#%11000011
+	byte	#%01000010
+	byte	#%00010000
+	byte	#%00101000
+	byte	#%10100101
+	byte	#%00011110
+	byte	#%00000111
+	byte	#%00000001	
+
+	_align	24
+Eiki_Sprite_Stand_P0_1
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00100110
+	byte	#%00100001
+	byte	#%00110011
+	byte	#%00000000
+	byte	#%01000011
+	byte	#%01000010
+	byte	#%01100011
+	byte	#%01000011
+	byte	#%01000011
+	byte	#%01000010
+	byte	#%00010000
+	byte	#%00101000
+	byte	#%00010111
+	byte	#%00000110
+	byte	#%00000011
+	byte	#%00000001	
+
+	_align	24
+Eiki_Sprite_Stand_P0_2
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%01100100
+	byte	#%01101000
+	byte	#%00100100
+	byte	#%00000000
+	byte	#%11000010
+	byte	#%11000010
+	byte	#%01000110
+	byte	#%11000010
+	byte	#%11000010
+	byte	#%01000010
+	byte	#%01000000
+	byte	#%01101000
+	byte	#%11001000
+	byte	#%00011100
+	byte	#%00001111
+	byte	#%00000001	
+
+	_align	24
+Eiki_Sprite_Move_P0_0
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00010110
+	byte	#%00000101
+	byte	#%00001010
+	byte	#%11100000
+	byte	#%01110001
+	byte	#%00110011
+	byte	#%01110001
+	byte	#%01110001
+	byte	#%01110001
+	byte	#%00100001
+	byte	#%00010010
+	byte	#%00100100
+	byte	#%00110010
+	byte	#%00001110
+	byte	#%00000111
+	byte	#%00000001
+
+	_align	24
+Eiki_Sprite_Move_P0_1
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%10110100
+	byte	#%01010000
+	byte	#%00101000
+	byte	#%00000111
+	byte	#%10001110
+	byte	#%11001100
+	byte	#%10001110
+	byte	#%10001110
+	byte	#%10001110
+	byte	#%10000100
+	byte	#%10100100
+	byte	#%00010000
+	byte	#%01001100
+	byte	#%00111110
+	byte	#%00011111
+	byte	#%00011001	; (4)
+
+	_align	24
+
+Eiki_Color_Stand_Move_P0
+	byte	#$1e
+	byte	#$1e
+	byte	#$1e
+	byte	#$1e
+	byte	#$1e
+	byte	#$1e
+	byte	#$3e
+	byte	#$3e
+	byte	#$0e
+	byte	#$8a
+	byte	#$88
+	byte	#$0a
+	byte	#$0c
+	byte	#$0a
+	byte	#$0c
+	byte	#$0e
+	byte	#$0c
+	byte	#$0e
+	byte	#$d8
+	byte	#$Da
+	byte	#$0e
+	byte	#$86
+	byte	#$8A
+	byte	#$88
+
 *
 *	AUDC0 / AUDC1
 *
+
 	_align 	4
 Bank1_SoundPlayer_SoundChannels
 	BYTE	#6
@@ -308,14 +1052,14 @@ Bank1_SoundPlayer_SoundDurations
 	BYTE	#3
 	BYTE	#6
 *
-*	Can be set to #0, #1, #3, #7
+*	Can be set 1-7
 *
 	_align 	4
 Bank1_SoundPlayer_SoundSlowDown
-	BYTE	#1
+	BYTE	#2
+	BYTE	#4
 	BYTE	#3
-	BYTE	#3
-	BYTE	#1
+	BYTE	#4
 
 	_align	8
 Bank1_SoundPlayer_SoundData_Pointers
@@ -373,10 +1117,38 @@ Bank1_SoundPlayer_SoundData_4
 	BYTE	#%00100001
 	BYTE	#%01100010
 
+
 *Routines Section 
 *----------------------------------
 * Reusable code
 *
+
+Bank1_HorPos
+*
+*	Based on X, it will save
+*	the position on strobe and also,
+*	it will save the value on temp01-temp05
+*
+*
+MinX = 23
+MaxX = 142
+
+	CLC				
+	ADC	#MinX			
+	CMP	#MaxX			
+ 	BCC 	Bank1_NotOverMax	
+	LDA	#MaxX
+Bank1_NotOverMax
+	STA	WSYNC
+	sleep	9
+Bank1_DivideLoop
+	sbc	#15
+   	bcs	Bank1_DivideLoop
+   	sta	temp01,X
+   	sta	RESP0,X	
+   	sta	WSYNC
+
+	RTS
 
 *
 *	The sound player is used globally, and transfers
@@ -427,11 +1199,19 @@ Bank1_SoundSettingsMustBeDone
 	AND	#%01100000
 	CMP	#0
 	BEQ	Bank1_NoMutingButSetting
+	CMP	#%01100000
+	BNE	Bank1_NoMutingForBoth
 
-	LDY	#0
-	ASL	
+	LDA	#0
+	STA	SoundCounters
+	STA	SoundSettings
+	JMP	Bank1_ReturnFromSP
+
+Bank1_NoMutingForBoth
 	TAX
-	BVC	Bank1_NoMutingForChannel0
+	AND	#%00100000
+	CMP	#%00100000
+	BNE	Bank1_NoMutingForChannel0
 
 	STY	AUDV0
 	LDA	SoundCounters
@@ -439,11 +1219,13 @@ Bank1_SoundSettingsMustBeDone
 	STA	SoundCounters
 
 	LDA	SoundSettings
-	AND	#%01000000
+	AND	#%10111000
 	STA	SoundSettings
 
-	TXA
 Bank1_NoMutingForChannel0
+	TXA	
+	AND	#%01000000
+	CMP	#%01000000
 	BPL	Bank1_NoMutingForChannel1
 
 	STY	AUDV1
@@ -452,15 +1234,18 @@ Bank1_NoMutingForChannel0
 	STA	SoundCounters
 
 	LDA	SoundSettings
-	AND	#%10000000
+	AND	#%01000111
 	STA	SoundSettings
+	
 
 Bank1_NoMutingForChannel1
+
 	JMP	Bank1_ReturnFromSP
 
 Bank1_NoMutingButSetting
 	LDY	#0
 	LDA	temp18
+
 	AND	#$0F
 	TAX
 	
@@ -508,6 +1293,9 @@ Bank1_Channel_Found
 	ASL
 	STA	temp05
 
+	LDA	Bank1_SoundPlayer_SoundSlowDown,x
+	STA	temp06
+
 	CPY	#0
 	BEQ	Bank1_Save_On_Channel_0
 	JMP	Bank1_Save_On_Channel_1
@@ -534,6 +1322,12 @@ Bank1_Save_On_Channel_0
 	LDA	SoundSettings
 	AND	#%10000000
 	ORA	temp05
+	STA	SoundSettings	
+
+	LDA	SoundSettings
+	AND	#%10111000
+	ORA	temp05
+	ORA	temp06
 	STA	SoundSettings	
 
 	JMP	Bank1_ReturnFromSP
@@ -581,10 +1375,16 @@ Bank1_Save_On_Channel_1
 	STA	SoundSettings
 
 	ASL 	temp05
-	
+	LDA	temp06	
+	ASL
+	ASL	
+	ASL
+	STA	temp06
+
 	LDA	SoundSettings
-	AND	#%01000000
+	AND	#%01000111
 	ORA	temp05
+	ORA	temp06
 	STA	SoundSettings
 
 	JMP	Bank1_ReturnFromSP
@@ -597,20 +1397,28 @@ Bank1_No_New_Sound
 	AND	#$0F
 	CMP	#0
 	BNE	Bank1_Play_Channel0
+	LDA	SoundSettings
+	AND	#%11111000
+	STA	SoundSettings
+
 	JMP	Bank1_Finished_Channel0
 Bank1_Play_Channel0
 	TAY
 	DEY
 
+*	LDA	#$88
+*	STA	COLUBK
+
 	LDA	SoundPointers
 	AND	#$0F
+	ASL
 	TAX
 
 	LDA	Bank1_SoundPlayer_SoundData_Pointers,x
 	STA	temp01
 	LDA	Bank1_SoundPlayer_SoundData_Pointers+1,x
 	STA	temp02	
-	
+
 	LDA	(temp01),y
 	STA	AUDF0
 	
@@ -625,11 +1433,32 @@ Bank1_Play_Channel0
 	ADC	#2
 Bank1_NoVolINC0
 	STA	temp06
+***	STA	AUDV0
 
-	LDA	counter
-	AND 	Bank1_SoundPlayer_SoundSlowDown,x	
-	CMP	Bank1_SoundPlayer_SoundSlowDown,x
+	LDA	SoundSettings
+	AND	#%11111000
+	STA	temp13
+
+	LDA	SoundSettings
+	AND	#%00000111
+	SEC
+	SBC	#1
+	AND	#%00000111
+	ORA	temp13
+	STA	SoundSettings
+	AND	#%00000111		
+	CMP	#0
 	BNE	Bank1_Finished_Channel0
+
+	LDA	SoundSettings
+	AND	#%11111000	
+	ORA	Bank1_SoundPlayer_SoundSlowDown,x
+	STA	SoundSettings
+
+*	LDA	counter
+*	AND 	Bank1_SoundPlayer_SoundSlowDown,x	
+*	CMP	Bank1_SoundPlayer_SoundSlowDown,x
+*	BNE	Bank1_Finished_Channel1
 
 	CPY	#0
 	BNE	Bank1_NoLoopResetChannel0
@@ -652,25 +1481,36 @@ Bank1_Finished_Channel0
 	LSR
 	CMP	#0
 	BNE	Bank1_Play_Channel1
+
+	LDA	SoundSettings
+	AND	#%11000111
+	STA	SoundSettings
+
 	JMP	Bank1_Finished_Channel1
 Bank1_Play_Channel1
 	TAY
 	DEY
 	
+***	LDA	#$1e
+***	STA	COLUBK
+
 	LDA	SoundPointers
 	LSR
 	LSR
 	LSR
-	LSR
+****	LSR
 	TAX
+
 
 	LDA	Bank1_SoundPlayer_SoundData_Pointers,x
 	STA	temp01
 	LDA	Bank1_SoundPlayer_SoundData_Pointers+1,x
-	STA	temp02	
-	
+	STA	temp02
+
 	LDA	(temp01),y
+***	STA	$00F0,y
 	STA	AUDF1
+
 	LSR
 	LSR
 	LSR	
@@ -682,11 +1522,34 @@ Bank1_Play_Channel1
 	ADC	#2
 Bank1_NoVolINC1
 	STA	temp07
+***	STA	AUDV1
 
-	LDA	counter
-	AND 	Bank1_SoundPlayer_SoundSlowDown,x	
-	CMP	Bank1_SoundPlayer_SoundSlowDown,x
+	LDA	SoundSettings
+	AND	#%11000111
+	STA	temp13
+
+	LDA	SoundSettings
+	AND	#%00111000
+	SEC
+	SBC	#%00001000
+	AND	#%00111000
+	ORA	temp13
+	STA	SoundSettings
+	AND	#%00111000		
+	CMP	#0
 	BNE	Bank1_Finished_Channel1
+	
+	LDA	Bank1_SoundPlayer_SoundSlowDown,x
+	ASL
+	ASL
+	ASL
+	ORA	temp13
+	STA	SoundSettings
+
+*	LDA	counter
+*	AND 	Bank1_SoundPlayer_SoundSlowDown,x	
+*	CMP	Bank1_SoundPlayer_SoundSlowDown,x
+*	BNE	Bank1_Finished_Channel1
 
 	CPY	#0
 	BNE	Bank1_NoLoopResetChannel1
@@ -707,7 +1570,7 @@ Bank1_NoLoopResetChannel1
 	STA	SoundCounters
 
 Bank1_Finished_Channel1
-Bank1_SetVolumes
+*Bank1_SetVolumes
 	LDA	temp06
 	STA	AUDV0
 	LDA	temp07
@@ -737,6 +1600,30 @@ Bank1_ReturnNoRTS
    	pha
 
    	jmp	bankSwitchJump
+
+
+Bank1_TestLines
+	LDA	#1
+	STA	CTRLPF
+
+	LDX	#1
+	LDA	counter
+	STA	COLUPF
+	LDA	#255
+Bank1_TestLine1
+	STA	WSYNC
+	STA	PF1
+	STA	PF2
+	
+	DEX
+	BPL 	Bank1_TestLine1
+		
+	LDA	#0
+	STA	WSYNC
+	STA	PF1
+	STA	PF2
+
+	RTS
 
 ###End-Bank1
 
@@ -3367,7 +4254,7 @@ OverScanBank3
 	AND	#%00011111
 	BNE 	Bank3_NoPlaySound
 
-	LDA	#%00000001
+	LDA	#%00000011
 	STA	temp18
 	JSR	Bank3_Call_SoundPlayer
 Bank3_NoPlaySound
@@ -6787,11 +7674,11 @@ Eiki2_DebugLoop3
 
 
 Eiki2_NoMoreLoops
-	LDX	#2	
+	LDX	#1	
 		
-	lda	#>(EnterScreenBank4-1)
+	lda	#>(EnterScreenBank1-1)
    	pha
-   	lda	#<(EnterScreenBank4-1)
+   	lda	#<(EnterScreenBank1-1)
    	pha
    	pha
    	pha
@@ -10859,7 +11746,7 @@ Bank8_Display_Level_Name
 * LDA	X
 * CMP	Y
 * BCC 	else
-
+Bank8_Start_Doing_Text
 	LDA	TextCounter
 	BPL	Bank8_Normal_Mode
 	DEC	TextCounter
