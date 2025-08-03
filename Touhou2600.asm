@@ -128,7 +128,8 @@ Score_6 = $AC
 
 LevelAndCharge = $AD
 *
-*	0-5: Charge
+*	0-4: Charge
+*	  5: Just shoot flag
 *	6-7: Level
 *
 eikiX = $AE
@@ -165,7 +166,7 @@ Eiki_HeightPlus1 = 24
 NumberOfLines = 35
 StickColor = $30
 
-	LDA	#62
+	LDA	#60
 	STA	eikiX
 
 	LDA	#5
@@ -244,7 +245,6 @@ OverScanBank1
 *
 
 	ASL	StickBuffer
-
 *
 *	Attack CountDown
 *
@@ -254,9 +254,52 @@ OverScanBank1
 	CMP	#0
 	BNE	Bank1_EikiDeadOrSpell
 
+*
+*	Special: Double Click for spell!
+*
+	LDA	LevelAndCharge
+	AND	#%00100000
+	CMP	#%00100000
+	BNE	Bank1_CannotCastSpell
+
+	BIT 	INPT4
+	BMI	Bank1_CannotCastSpell
+
+	LDA	LevelAndCharge
+	AND	#%11000000
+	ORA	#%00011111
+	STA	LevelAndCharge
+
+	LDA	eikiSettings
+	ORA	#%01000000
+	AND	#%11011111
+	STA	eikiSettings
+
+	LDA	eikiSettings2
+	AND	#%11001111
+	STA	eikiSettings2
+
+	JMP	Bank1_EikiDeadOrSpell
+
+Bank1_CannotCastSpell
+
 	LDA	eikiSettings2
 	AND	#%11001111
 	STA	temp01
+
+	LDA	eikiSettings2
+	AND	#%00110000
+	CMP	#0
+	BEQ	Bank1_DontSetMagicFlag	
+
+	BIT 	INPT4
+	BPL	Bank1_DontSetMagicFlag
+
+	LDA	LevelAndCharge
+	ORA	#%00100000
+	STA	LevelAndCharge	
+
+Bank1_DontSetMagicFlag
 
 	LDA	counter
 	AND	#%00000011
@@ -279,7 +322,13 @@ OverScanBank1
 	LDA	eikiSettings
 	AND	#%11011111
 	STA	eikiSettings
-	
+*
+*	Disable Magic Flag
+*	
+	LDA	LevelAndCharge
+	AND	#%11011111
+	STA	LevelAndCharge	
+
 	LDA	temp02
 Bank1JustSaveThings
 	ORA	temp01
@@ -313,13 +362,7 @@ Bank1_NoCountDownNeeded
 	JSR	Bank1_SoundPlayer
 
 	JMP	Bank1_JustAttacked
-Bank1_CannotAttack
-*
-*	Special: Double Click for spell!
-*
 
-Bank1_NoAttackPressed
-Bank1_JustAttacked
 Bank1_EikiDeadOrSpell
 
 	BIT	eikiSettings
@@ -330,9 +373,46 @@ Bank1_EikiDeadOrSpell
 	AND	#%00000001
 	CMP	#%00000001
 	BNE	Bank1_EikiDied
+
+	LDA	counter
+	AND	#%00000111
+	CMP	#%00000111
+	BNE	Bank1_NoDECSpellCounter
+
+	LDA	#1
+	STA	temp18
+	LDA	#0
+	STA	temp19
+
+	JSR	Bank1_SoundPlayer
+	LDA	LevelAndCharge
+	AND	#%11000000
+	STA	temp01	
+
+	LDA	LevelAndCharge
+	AND	#%00011111
+	SEC
+	SBC	#1
+	AND	#%00011111	
+	STA	LevelAndCharge
+	CMP	#0
+	BNE	Bank1_DontStopSpell
+
+	LDA	eikiSettings
+	AND	#%10111111
+	STA	eikiSettings
+
+Bank1_DontStopSpell
+	LDA	LevelAndCharge
+	ORA	temp01
+	STA	LevelAndCharge
 *
 *	Set sprite
 *
+Bank1_NoDECSpellCounter
+Bank1_CannotAttack
+Bank1_NoAttackPressed
+Bank1_JustAttacked
 Bank1_EikiNoSpell
 	LDA	eikiY
 	AND	#%00001111		
@@ -361,7 +441,7 @@ Bank1_NotMovedHor
 
 	LDA	Bank1MaxX	
 	SEC
-	SBC	#MinX
+	SBC	Bank1MinX
 	STA	temp01
 
 	LDA	eikiX
@@ -446,6 +526,17 @@ Bank1_DontINCSpriteIndex
 Bank1_EikiDead
 
 Bank1_EikiSpell
+	LDA	eikiSettings2
+	AND	#$F0
+	ORA	#6			
+	STA	eikiSettings2
+
+	LDA	eikiSettings
+	AND	#%11110011
+	ORA	#%00001000
+	STA	eikiSettings
+
+	JMP	Bank1_EikiGotSpritePointer
 
 Bank1_EikiAttack
 
@@ -600,18 +691,7 @@ Bank1_Eiki_Field
 **	STA	ENABL
 **	STA	ENAM0
 **	STA	ENAM1
-	STA	NUSIZ1
-*
-*	Missile 0 X PF = Register Hit
-*
-	LDA	#$10
-	STA	NUSIZ0
-*
-*	PF  : Mirrored, before the player
-*
 
-	LDA	#%00010001
-	STA	CTRLPF			; 3
 *
 *	Sprites
 *
@@ -643,6 +723,14 @@ Bank1_Eiki_Field
 	ADC	#4
 	STA	temp13
 
+	lda	counter
+	and	#1
+	tax
+	LDA	Bank1M1AddX,x
+	CLC
+	ADC	temp11
+	STA	temp14
+
 *	LDA	#$1e
 *	STA	COLUBK
 
@@ -653,15 +741,19 @@ Bank1_HorPos
 *	it will save the value on temp11-temp15
 *
 *
-MinX = 39
+*  MinX = 39
 ** MaxX = 159
-NumOfLoop=2
-	
+NumOfLoop=3
+
+*	STA	WSYNC
+*	LDA	#$1e
+*	STA	COLUBK
+
 	LDX	#NumOfLoop
 Bank1_MaxLoop
 	LDA	temp11,x
 	CLC				
-	ADC	#MinX			
+	ADC	Bank1MinX,x			
 	CMP	Bank1MaxX,x			
  	BCS 	Bank1_OverMax	
 	JMP	Bank1_NotOverMax
@@ -672,10 +764,13 @@ Bank1_NotOverMax
 	DEX
 	BPL	Bank1_MaxLoop
 
+*	STA	WSYNC
+*	LDA	#$00
+*	STA	COLUBK
+
 	LDX	#NumOfLoop
 Bank1_NextHorPoz
 	STA	WSYNC
-
 	LDA	temp11,x
 Bank1_DivideLoop
 	sbc	#15
@@ -684,6 +779,11 @@ Bank1_DivideLoop
    	sta	RESP0,X	
 	DEX
 	BPL	Bank1_NextHorPoz	
+
+	STA	WSYNC
+
+*	LDA	#$00
+*	STA	COLUBK
 
 	ldx	#NumOfLoop
 Bank1_setFine
@@ -696,12 +796,23 @@ Bank1_setFine
 	DEX
 	BPL	Bank1_setFine
 
+
 	STA	WSYNC
 	STA	HMOVE
 
 *	LDA	#0
 *	STA	COLUBK
 
+	LDA	#$20
+	STA	NUSIZ1
+
+	LDA	#$10
+	STA	NUSIZ0
+*
+*	PF  : Mirrored, before the player
+*
+	LDA	#%00010001
+	STA	CTRLPF			; 3
 
 *
 *	temp01: Eiki's P0 pointer
@@ -772,7 +883,7 @@ Bank1_setFine
 
 	LDA	#StickColor		; 2
 	ORA	temp14			; 3
-	STA	COLUP1			; 3
+	STA	COLUP0			; 3
 
 	sleep	13
 
@@ -798,7 +909,7 @@ Bank1_Eiki_Before_Magic__
 *	Danmaku_Col_4R
 *
 
-	_align	128
+	_align	125
 
 Bank1_Eiki_Before_Loop
 	STA	WSYNC
@@ -817,9 +928,10 @@ Bank1_Eiki_Before_Loop
 	BIT 	eikiSettings		; 2 (23)
 	BVC	Bank1_Eiki_Before_No_Magic	; 2 (25)
 
-	LDA	temp16		; 3 (28)
-	ADC	counter		; 3 (31)
-	AND	#$0F		; 2 (33)
+	LDA	counter
+	LSR
+	SBC	temp16		; 3 (28)
+	AND	#%00000011	; 2 (33)
 
 	JMP	Bank1_Eiki_Before_Was_Magic ; 2 (37) 
 
@@ -838,27 +950,33 @@ Bank1_Eiki_Before_Was_Magic
 	LDA	Danmaku_Col_4R,x
 	STA	PF1		; 7 (53)
 	
-	TXS			; 2 (55)
+***	TXS			; 2 (55)
 
-	sleep	6
+***	sleep	2
 
 	BIT 	eikiSettings		; 2 (66)
 	BVS	Bank1_Eiki_Before_Was_Magic2	; 2 (68)
 
-	sleep	4
+	sleep	12
 
 	LDA	Bank1_FakeMissile,y 	     ; 4 (74)
 	JMP	Bank1_Eiki_Before_Was_No_Magic2 ; 3 (1)
 
 Bank1_Eiki_Before_Was_Magic2
-	LAX	Bank1_Magic_Pattern_0,y ; 4 (70)
-	LDA	Bank1_Magic_Pattern_1,y ; 4 (74)
-	STX	GRP0			; 3 (1)
+	sleep	9
+	LDA	#2
+	STA	ENAM1
+
+	LDA	Bank1_Magic_Pattern_0,y ; 4 (70)
+***	LDA	Bank1_Magic_Pattern_1,y ; 4 (74)
+***	STX	GRP0			; 3 (1)
+***	LDA	#%10100101
+***	sleep	2
 Bank1_Eiki_Before_Was_No_Magic2
-	STA	GRP1			; 3 (4)	
+	STA	GRP0			; 3 (4)	
 
-	TSX			; 2 (6)
-
+***	TSX			; 2 (6)
+	sleep	2
 Bank1_Eiki_Before_SecondLine
 	LDA	Danmaku_Col_1R,x
 	STA	PF1
@@ -888,7 +1006,7 @@ Bank1_NoEiki_StayHere
 	DEC	temp16
 	BPL	Bank1_Eiki_Before_Loop
 	
-	_align	128
+	_align	143
 
 Bank1_Eiki_Loop
 	STA	WSYNC
@@ -946,7 +1064,10 @@ Bank1_Eiki_Loop_Secondline
 	LDA	Danmaku_Col_2R,x
 	STA	PF2		; 7 (29)	
 
-	sleep	7
+****	sleep	7
+	LDA	#0
+	STA	ENAM1
+	sleep	2
 
 Bank1_GoForEiki	
 
@@ -1032,11 +1153,28 @@ Bank1_Main_Ended
 * custom ScreenTop and ScreenBottom
 * elments.
 *
-	_align	3
+	_align	4
 Bank1MaxX
-	BYTE	#159
-	BYTE	#159
-	BYTE	#162
+**	BYTE	#159
+**	BYTE	#159
+	BYTE	#157
+	BYTE	#157
+	BYTE	#161
+	BYTE	#163
+
+	_align	4
+Bank1MinX
+**	BYTE	#39
+**	BYTE	#39
+	BYTE	#43
+	BYTE	#43
+	BYTE	#43
+	BYTE	#41
+
+	_align	2
+Bank1M1AddX
+	BYTE	#0
+	BYTE	#10
 
 	_align	2
 
@@ -1044,20 +1182,13 @@ Bank1_FakeMissile
 	BYTE	#%00000000
 	BYTE	#%01100110
 
-	_align	4
-
-Bank1_Magic_Pattern_1
-	BYTE 	#%00111100
-	BYTE 	#%01111110
-	BYTE 	#%11111111
-	BYTE 	#%01111101
 
 	_align	4
 Bank1_Magic_Pattern_0
-	BYTE	#%01011010
-	BYTE	#%00100100
-	BYTE	#%10011001	
-	BYTE	#%00100100
+	BYTE 	#%01111110
+	BYTE 	#%11111111
+	BYTE 	#%01111110
+	BYTE 	#%00111100
 
 	_align	16
 
@@ -1198,7 +1329,7 @@ TestPF_03
 *	Height      = 24
 *
 
-	_align	12
+	_align	14
 Eiki_Sprite_Pointers_P0
 	byte 	#<Eiki_Sprite_Stand_P0_0
 	byte	#>Eiki_Sprite_Stand_P0_0
@@ -1212,8 +1343,10 @@ Eiki_Sprite_Pointers_P0
 	byte	#>Eiki_Sprite_Move_P0_1
 	byte	#<Eiki_Sprite_Attack_P0
 	byte	#>Eiki_Sprite_Attack_P0
+	byte	#<Eiki_Sprite_Spell_P0
+	byte	#>Eiki_Sprite_Spell_P0
 
-	_align	12
+	_align	14
 Eiki_Sprite_Pointers_P1
 	byte 	#<Eiki_Sprite_Stand_P1_0
 	byte	#>Eiki_Sprite_Stand_P1_0
@@ -1227,21 +1360,26 @@ Eiki_Sprite_Pointers_P1
 	byte	#>Eiki_Sprite_Move_P1_1
 	byte	#<Eiki_Sprite_Attack_P1
 	byte	#>Eiki_Sprite_Attack_P1
+	byte	#<Eiki_Sprite_Spell_P1
+	byte	#>Eiki_Sprite_Spell_P1
 
-	_align	4
+	_align	6
 Eiki_Sprite_Color_Pointers_P0
 	byte 	#<Eiki_Color_Stand_Move_P0
 	byte	#>Eiki_Color_Stand_Move_P0
 	byte 	#<Eiki_Color_Attack_P0
 	byte	#>Eiki_Color_Attack_P0
+	byte 	#<Eiki_Color_Spell_P0
+	byte	#>Eiki_Color_Spell_P0
 
-	_align	4
+	_align	6
 Eiki_Sprite_Color_Pointers_P1
 	byte 	#<Eiki_Color_Stand_Move_P1
 	byte	#>Eiki_Color_Stand_Move_P1
 	byte 	#<Eiki_Color_Attack_P1
 	byte	#>Eiki_Color_Attack_P1
-
+	byte 	#<Eiki_Color_Spell_P1
+	byte	#>Eiki_Color_Spell_P1
 
 	_align	24
 
@@ -1684,6 +1822,122 @@ Eiki_Color_Attack_P0
 	byte	#$0e
 	byte	#$3c
 	byte	#$3e
+
+
+	_align	24	
+
+Eiki_Sprite_Spell_P1
+	byte	#%11000011
+	byte	#%11000011
+	byte	#%11000011
+	byte	#%11000011
+	byte	#%11000011
+	byte	#%11000011
+	byte	#%11100111
+	byte	#%10111001
+	byte	#%11010011
+	byte	#%01100110
+	byte	#%00011000
+	byte	#%01000010
+	byte	#%11000011
+	byte	#%10110101
+	byte	#%01011010
+	byte	#%01011010
+	byte	#%00001110
+	byte	#%00111111
+	byte	#%01100110
+	byte	#%11011011
+	byte	#%11100111
+	byte	#%01000010
+	byte	#%10000001
+	byte	#%00000000	; (0)
+
+
+	_align	24	
+
+Eiki_Color_Spell_P1
+	byte	#$02
+	byte	#$04
+	byte	#$06
+	byte	#$0c
+	byte	#$0e
+	byte	#$3c
+	byte	#$3e
+	byte	#$8c
+	byte	#$8a
+	byte	#$88
+	byte	#$86
+	byte	#$0a
+	byte	#$0e
+	byte	#$d6
+	byte	#$d8
+	byte	#$08
+	byte	#$8c
+	byte	#$8a
+	byte	#$0c
+	byte	#$0e
+	byte	#$3e
+	byte	#$1c
+	byte	#$1e
+	byte	#$0e
+
+
+	_align	24	
+
+Eiki_Sprite_Spell_P0
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%01000110
+	byte	#%00101100
+	byte	#%00011000
+	byte	#%00000000
+	byte	#%00111100
+	byte	#%00111100
+	byte	#%01001010
+	byte	#%00100100
+	byte	#%10100101
+	byte	#%01110000
+	byte	#%11000000
+	byte	#%10011001
+	byte	#%00100100
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%01111110
+	byte	#%00000000	; (0)
+
+
+	_align	24	
+
+Eiki_Color_Spell_P0
+	byte	#$1e
+	byte	#$1e
+	byte	#$1e
+	byte	#$1e
+	byte	#$1e
+	byte	#$1e
+	byte	#$1e
+	byte	#$8a
+	byte	#$88
+	byte	#$86
+	byte	#$0c
+	byte	#$86
+	byte	#$84
+	byte	#$d8
+	byte	#$da
+	byte	#$0e
+	byte	#$86
+	byte	#$86
+	byte	#$84
+	byte	#$3c
+	byte	#$16
+	byte	#$8a
+	byte	#$8e
+	byte	#$1e
 *
 *	Tokens
 *
@@ -1791,7 +2045,7 @@ Tokens_Color_P0_Gold
 	_align 	4
 Bank1_SoundPlayer_SoundChannels
 	BYTE	#6
-	BYTE	#3
+	BYTE	#2
 	BYTE	#9
 	BYTE	#14
 *
@@ -1800,7 +2054,7 @@ Bank1_SoundPlayer_SoundChannels
 	_align 	4
 Bank1_SoundPlayer_SoundDurations
 	BYTE	#8
-	BYTE	#12
+	BYTE	#11
 	BYTE	#6
 	BYTE	#10
 *
@@ -1809,7 +2063,7 @@ Bank1_SoundPlayer_SoundDurations
 	_align 	4
 Bank1_SoundPlayer_SoundSlowDown
 	BYTE	#2
-	BYTE	#4
+	BYTE	#2
 	BYTE	#3
 	BYTE	#4
 
@@ -1839,20 +2093,19 @@ Bank1_SoundPlayer_SoundData_1
 	BYTE	#%01100100
 	BYTE	#%00100010
 
-	_align	12
+	_align	11
 Bank1_SoundPlayer_SoundData_2
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
 	BYTE	#%01000111
 	BYTE	#%01101000
 	BYTE	#%10000111
 	BYTE	#%10000011
-	BYTE	#%01100010
-	BYTE	#%01000100
-	BYTE	#%00100111
-	BYTE	#%01000011
-	BYTE	#%01100111
-	BYTE	#%10001000
-	BYTE	#%01000010
-	BYTE	#%00100001
+	BYTE	#%01001101
 
 	_align	6
 Bank1_SoundPlayer_SoundData_3
