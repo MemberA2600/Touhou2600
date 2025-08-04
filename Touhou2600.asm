@@ -144,7 +144,7 @@ eikiY = $AF
 *
 eikiSettings = $B0
 *	0-1: 3 counter
-*	2-4: Color Index
+*	2-3: Color Index
 *	
 *	4: Moving
 *	5: Attack
@@ -155,7 +155,8 @@ eikiSettings2 = $B1
 *
 *	0-3: SpriteIndex
 *	4-5: CoolDown
-*	6-7: Free
+*	  6: Invincible flag 
+*	  7: Free
 *
 DanmakuColor = $B2
 StickBuffer = $B3
@@ -166,7 +167,7 @@ Eiki_HeightPlus1 = 24
 NumberOfLines = 35
 StickColor = $30
 
-	LDA	#60
+	LDA	#58
 	STA	eikiX
 
 	LDA	#5
@@ -174,21 +175,37 @@ StickColor = $30
 
 	LDA	#%01100000
 	STA	temp18
-	LDA	#0
+	LDA	#255
 	STA	temp19
-
 	JSR	Bank1_SoundPlayer
 
 	LDA	#0
 	STA	eikiSettings
+
+	LDA	#%01000000
 	STA	eikiSettings2
 
-****	LDA	#%00110011
+	LDA	LevelAndCharge
+	ORA	#%00000001
+	STA	LevelAndCharge
+
+	LDA	#%00000000
 	STA	StickBuffer
 
-	LDA	#$06
-	STA	DanmakuColor
+	LDX	#NumberOfLines
+	DEX
+Bank1_Erase_PF_2
+	LDA	#0
+	STA	Danmaku_Col_1W,x
+	STA	Danmaku_Col_2W,x
+	STA	Danmaku_Col_3W,x
+	STA	Danmaku_Col_4W,x
 
+	DEX
+	BPL	Bank1_Erase_PF_2
+
+	LDA	#$0e
+	STA	DanmakuColor
 
 HitBoxMinus = 9 	
 
@@ -245,15 +262,51 @@ OverScanBank1
 *
 
 	ASL	StickBuffer
+
+	BIT 	eikiSettings2
+	BVC	Bank1_NoInvincibleCountDown
+
+	LDA	counter
+	AND	#%00000011
+	CMP	#%00000011
+	BNE	Bank1_NoInvincibleCountDown
+
+	LDA	LevelAndCharge
+	AND	#%11000000
+	STA	temp01
+
+	LDA	LevelAndCharge	
+	AND	#%00111111
+	SEC
+	SBC	#1
+	STA	LevelAndCharge	
+	CMP	#0
+	BNE	Bank1_NoFullRevive
+	
+	LDA	eikiSettings2
+	AND	#%10111111
+	STA	eikiSettings2
+
+	LDA	LevelAndCharge
+Bank1_NoFullRevive
+	ORA	temp01
+	STA	LevelAndCharge
+
+	JMP	Bank1_CannotAttack
 *
 *	Attack CountDown
 *
-
+Bank1_NoInvincibleCountDown
 	LDA	eikiSettings
 	AND	#%11000000
 	CMP	#0
 	BNE	Bank1_EikiDeadOrSpell
 
+	BIT 	eikiSettings2
+	BVC	Bank1_NoTempInv
+
+	JMP	Bank1_CannotAttack
+Bank1_NoTempInv
 *
 *	Special: Double Click for spell!
 *
@@ -354,9 +407,9 @@ Bank1_NoCountDownNeeded
 	ORA	#7
 	STA	StickBuffer
 
-	LDA	#%00000010
+	LDA	#$82
 	STA	temp18
-	LDA	#0
+	LDA	#255
 	STA	temp19
 
 	JSR	Bank1_SoundPlayer
@@ -372,16 +425,16 @@ Bank1_EikiDeadOrSpell
 	LDA	counter
 	AND	#%00000001
 	CMP	#%00000001
-	BNE	Bank1_EikiDied
+	BNE	Bank1_Eiki_Whatever
 
 	LDA	counter
 	AND	#%00000111
 	CMP	#%00000111
 	BNE	Bank1_NoDECSpellCounter
 
-	LDA	#1
+	LDA	#$81
 	STA	temp18
-	LDA	#0
+	LDA	#255
 	STA	temp19
 
 	JSR	Bank1_SoundPlayer
@@ -475,8 +528,34 @@ Bank1_NoMove
 Bank1_Moved
 	STA	eikiSettings
 
+	JMP	Bank1_Eiki_Whatever
 Bank1_EikiDied
+	LDA	LevelAndCharge
+	AND	#%11000000
+	STA	temp01
 
+	LDA	LevelAndCharge
+	AND	#%00011111
+	CLC
+	ADC	#1
+	STA	LevelAndCharge
+	CMP	#%00011111
+	BNE	Bank1_Eiki_NoRevive
+	
+	LDA	eikiSettings
+	AND	#%01111111
+	STA	eikiSettings
+
+	LDA 	eikiSettings2
+	ORA	#%01000000
+	STA	eikiSettings2
+
+	LDA	LevelAndCharge
+Bank1_Eiki_NoRevive
+	ORA	temp01
+	STA	LevelAndCharge
+
+Bank1_Eiki_Whatever
 	LDA	counter
 	AND	#7
 	CMP	#7
@@ -524,7 +603,25 @@ Bank1_DontINCSpriteIndex
 *
 	JMP	Bank1_EikiColorPointer0	
 Bank1_EikiDead
+	LDA	LevelAndCharge
+	AND	#%00011111
+	LSR
+	LSR
+	LSR
+	CLC
+	ADC	#7
+	STA	temp01
 
+	LDA	eikiSettings2
+	AND	#$F0
+	ORA	temp01
+	STA	eikiSettings2
+
+	LDA	eikiSettings
+	ORA	#%00001100
+	STA	eikiSettings
+
+	JMP	Bank1_EikiGotSpritePointer
 Bank1_EikiSpell
 	LDA	eikiSettings2
 	AND	#$F0
@@ -575,22 +672,27 @@ Bank1_EikiGotSpritePointer
 	LDX	#NumberOfLines
 	DEX
 Bank1_Erase_PF
-******	LDA	#0
+	LDA	#0
 
-	LDA	TestPF_00,x
+*****	LDA	TestPF_00,x
 	STA	Danmaku_Col_1W,x
 
-	LDA	TestPF_01,x
+*****	LDA	TestPF_01,x
 	STA	Danmaku_Col_2W,x
 
-	LDA	TestPF_02,x
+*****	LDA	TestPF_02,x
 	STA	Danmaku_Col_3W,x
 
-	LDA	TestPF_03,x
+*****	LDA	TestPF_03,x
 	STA	Danmaku_Col_4W,x
 
 	DEX
 	BPL	Bank1_Erase_PF
+
+	LDX	#8
+	LDA	#%00100000
+	STA	Danmaku_Col_1W,x
+
 
 Bank1_Fill_PF_Ended
 
@@ -639,6 +741,7 @@ VBLANKBank1
 	STA	temp18
 	STA	temp19
 	JSR	Bank1_SoundPlayer
+
 
 *SkipIfNoGameSet - VBLANK
 *---------------------------------
@@ -693,14 +796,42 @@ Bank1_Eiki_Field
 **	STA	ENAM1
 
 *
-*	Sprites
+*	Set basics
 *
+	LDA	#$20
+	STA	NUSIZ1
 
+	LDA	#$10
+	STA	NUSIZ0
+
+	LDA	#%00000101
+	STA	CTRLPF			; 3
+
+	sleep	8
+
+*
+*	Set sprite
+*
+	BIT	eikiSettings2
+	BVC	Bank1_NoIncInvisibility
+	LDA	counter
+	AND	#%00000011
+	CMP	#%00000011
+	BNE	Bank1_NoIncInvisibility
+
+	LDA	#<Bank1_Empty
+	STA	temp01
+	STA	temp03
+	LDA	#>Bank1_Empty
+	STA	temp02
+	STA	temp04				; 18
+
+	JMP	Bank1_InvisibleSprite
+Bank1_NoIncInvisibility
 	LDA	eikiSettings2
 	AND	#%00001111
 	ASL
 	TAX					; 9 (23)
-
 
 	LDA	Eiki_Sprite_Pointers_P0,x
 	STA	temp01
@@ -713,6 +844,7 @@ Bank1_Eiki_Field
 	LDA	Eiki_Sprite_Pointers_P1+1,x
 	STA	temp04				; 16 (55)
 
+Bank1_InvisibleSprite
 
 	LDA	eikiX			
 	AND	#%01111111
@@ -803,16 +935,6 @@ Bank1_setFine
 *	LDA	#0
 *	STA	COLUBK
 
-	LDA	#$20
-	STA	NUSIZ1
-
-	LDA	#$10
-	STA	NUSIZ0
-*
-*	PF  : Mirrored, before the player
-*
-	LDA	#%00010001
-	STA	CTRLPF			; 3
 
 *
 *	temp01: Eiki's P0 pointer
@@ -963,7 +1085,11 @@ Bank1_Eiki_Before_Was_Magic
 	JMP	Bank1_Eiki_Before_Was_No_Magic2 ; 3 (1)
 
 Bank1_Eiki_Before_Was_Magic2
-	sleep	9
+
+	sleep	4
+***	sleep	9
+	LDA	#255
+	STA	GRP1
 	LDA	#2
 	STA	ENAM1
 
@@ -1006,7 +1132,7 @@ Bank1_NoEiki_StayHere
 	DEC	temp16
 	BPL	Bank1_Eiki_Before_Loop
 	
-	_align	143
+	_align	145
 
 Bank1_Eiki_Loop
 	STA	WSYNC
@@ -1127,9 +1253,44 @@ Bank1_ResetThings
 	STA	PF2
 	STA	GRP0
 	STA	GRP1
+*
+*	Check Collisions
+*
+
+	BIT	CXM0FB
+	BPL	Bank1_NotHitOnBox
+	BIT	eikiSettings
+	BMI	Bank1_EikiAlreadyDead
+	BIT	eikiSettings
+	BVS	Bank1_EikiUsedSpellSoNoHit
+	BIT 	eikiSettings2
+	BVS	Bank1_TemporalInvincibility
+*
+*	Set counter for sprite
+*
+	LDA	LevelAndCharge
+	AND	#%11100000
+	STA	LevelAndCharge
+
+	LDA	eikiSettings
+	ORA	#%10000000
+	AND	#%10001111
+	STA	eikiSettings
+
+	LDA	#$84
+	STA	temp18
+	LDA	#255
+	STA	temp19
+	JSR	Bank1_SoundPlayer
+
+Bank1_EikiUsedSpellSoNoHit
+Bank1_NotHitOnBox
+Bank1_TemporalInvincibility
+Bank1_EikiAlreadyDead
 
 	ldx	stack
 	txs	
+	STA	CXCLR
 
 Bank1_Main_Ended
 	JSR	Bank1_TestLines
@@ -1142,6 +1303,7 @@ Bank1_Main_Ended
 	STA	COLUP1	
 	STA	COLUPF	
 	
+
 	ldx	stack
 	txs
 
@@ -1239,97 +1401,173 @@ Bank1_FineAdjustTable
 	byte	#$a0
 	byte	#$90
 
-	_align	18
-TestPF_00
-	BYTE %00010000
-	BYTE %00101000
-	BYTE %01000101
-	BYTE %10000010
-	BYTE %00000000
-	BYTE %01100110
-	BYTE %00000000
-	BYTE %11001110
-	BYTE %10101000
-	BYTE %11001100
-	BYTE %10101000
-	BYTE %11001110
-	BYTE %00000000
-	BYTE %00010000
-	BYTE %00101000
-	BYTE %01000101
-	BYTE %01100110
-	BYTE %10011001
-
-	_align	18
-
-TestPF_01
-	BYTE %10000010
-	BYTE %01000101
-	BYTE %00101000
-	BYTE %00010000
-	BYTE %00000000
-	BYTE %01100110
-	BYTE %00000000
-	BYTE %00100011
-	BYTE %00100100
-	BYTE %00100010
-	BYTE %00100001
-	BYTE %01110110
-	BYTE %00000000
-	BYTE %10000010
-	BYTE %01000101
-	BYTE %00101000
-	BYTE %01100110
-	BYTE %10011001
-
-	_align	18
-
-TestPF_02
-	BYTE %00000100
-	BYTE %10001010
-	BYTE %01010001
-	BYTE %00100000
-	BYTE %00000000
-	BYTE %01100110
-	BYTE %00000000
-	BYTE %01000111
-	BYTE %01000100
-	BYTE %01100100
-	BYTE %01010100
-	BYTE %01100100
-	BYTE %00000000
-	BYTE %00000100
-	BYTE %10001010
-	BYTE %01010001
-	BYTE %01100110
-	BYTE %10011001
-
-	_align	18
-
-TestPF_03
-	BYTE %00001000
-	BYTE %00010100
-	BYTE %10100010
-	BYTE %01000001
-	BYTE %00000000
-	BYTE %01100110
-	BYTE %00000000
-	BYTE %01001010
-	BYTE %01001010
-	BYTE %01001110
-	BYTE %01001010
-	BYTE %10100100
-	BYTE %00000000
-	BYTE %00001000
-	BYTE %00010100
-	BYTE %10100010
-	BYTE %01100110
-	BYTE %10011001
 *
 *	Height      = 24
 *
+	_align	24
+Bank1_Empty
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
 
-	_align	14
+	_align	24
+Boom_Sprite_0
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00011000
+	byte	#%00100100
+	byte	#%00100100
+	byte	#%00011000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000	
+
+
+	_align	24
+Boom_Sprite_1
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00011000
+	byte	#%01000010
+	byte	#%00000000
+	byte	#%10011001
+	byte	#%10011001
+	byte	#%00000000
+	byte	#%01000010
+	byte	#%00011000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000	
+
+	_align	24
+Boom_Sprite_2
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00100100
+	byte	#%01000010
+	byte	#%00000000
+	byte	#%10000001
+	byte	#%10100101
+	byte	#%00100100
+	byte	#%01011010
+	byte	#%00000100
+	byte	#%00100000
+	byte	#%01011010
+	byte	#%00100100
+	byte	#%10100101
+	byte	#%10000001
+	byte	#%00000000
+	byte	#%01000010
+	byte	#%00100100
+	byte	#%00000000
+	byte	#%00000000
+
+	_align	24
+Boom_Sprite_3
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00011000
+	byte	#%01000010
+	byte	#%00000000
+	byte	#%10011001
+	byte	#%10000001
+	byte	#%00100100
+	byte	#%01000010
+	byte	#%01000010
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%01000010
+	byte	#%01000010
+	byte	#%00100100
+	byte	#%10000001
+	byte	#%10011001
+	byte	#%00000000
+	byte	#%01000010
+	byte	#%00011000	; (3)
+
+	_align	24
+Boom_Color
+	byte	#$0a
+	byte	#$08
+	byte	#$0a
+	byte	#$0c
+	byte	#$0e
+	byte	#$0c
+	byte	#$0a
+	byte	#$08
+	byte	#$0a
+	byte	#$0c
+	byte	#$0e
+	byte	#$0e
+	byte	#$0c
+	byte	#$0a
+	byte	#$08
+	byte	#$0a
+	byte	#$0c
+	byte	#$0e
+	byte	#$0c
+	byte	#$0a
+	byte	#$08
+	byte	#$0a
+	byte	#$0c
+	byte	#$0e
+
+	_align	22
 Eiki_Sprite_Pointers_P0
 	byte 	#<Eiki_Sprite_Stand_P0_0
 	byte	#>Eiki_Sprite_Stand_P0_0
@@ -1345,8 +1583,16 @@ Eiki_Sprite_Pointers_P0
 	byte	#>Eiki_Sprite_Attack_P0
 	byte	#<Eiki_Sprite_Spell_P0
 	byte	#>Eiki_Sprite_Spell_P0
+	byte	#<Boom_Sprite_0
+	byte	#>Boom_Sprite_0
+	byte	#<Boom_Sprite_1
+	byte	#>Boom_Sprite_1
+	byte	#<Boom_Sprite_2
+	byte	#>Boom_Sprite_2
+	byte	#<Boom_Sprite_3
+	byte	#>Boom_Sprite_3
 
-	_align	14
+	_align	22
 Eiki_Sprite_Pointers_P1
 	byte 	#<Eiki_Sprite_Stand_P1_0
 	byte	#>Eiki_Sprite_Stand_P1_0
@@ -1362,8 +1608,16 @@ Eiki_Sprite_Pointers_P1
 	byte	#>Eiki_Sprite_Attack_P1
 	byte	#<Eiki_Sprite_Spell_P1
 	byte	#>Eiki_Sprite_Spell_P1
+	byte	#<Boom_Sprite_0
+	byte	#>Boom_Sprite_0
+	byte	#<Boom_Sprite_1
+	byte	#>Boom_Sprite_1
+	byte	#<Boom_Sprite_2
+	byte	#>Boom_Sprite_2
+	byte	#<Boom_Sprite_3
+	byte	#>Boom_Sprite_3
 
-	_align	6
+	_align	8
 Eiki_Sprite_Color_Pointers_P0
 	byte 	#<Eiki_Color_Stand_Move_P0
 	byte	#>Eiki_Color_Stand_Move_P0
@@ -1371,8 +1625,10 @@ Eiki_Sprite_Color_Pointers_P0
 	byte	#>Eiki_Color_Attack_P0
 	byte 	#<Eiki_Color_Spell_P0
 	byte	#>Eiki_Color_Spell_P0
+	byte	#<Boom_Color
+	byte	#>Boom_Color
 
-	_align	6
+	_align	8
 Eiki_Sprite_Color_Pointers_P1
 	byte 	#<Eiki_Color_Stand_Move_P1
 	byte	#>Eiki_Color_Stand_Move_P1
@@ -1380,6 +1636,8 @@ Eiki_Sprite_Color_Pointers_P1
 	byte	#>Eiki_Color_Attack_P1
 	byte 	#<Eiki_Color_Spell_P1
 	byte	#>Eiki_Color_Spell_P1
+	byte	#<Boom_Color
+	byte	#>Boom_Color
 
 	_align	24
 
@@ -2041,93 +2299,53 @@ Tokens_Color_P0_Gold
 *
 *	AUDC0 / AUDC1
 *
-
-	_align 	4
-Bank1_SoundPlayer_SoundChannels
-	BYTE	#6
-	BYTE	#2
-	BYTE	#9
+	_align  5
+Bank1_SoundChannels
 	BYTE	#14
+	BYTE	#3
+	BYTE	#9
+	BYTE	#2
+	BYTE	#8
 *
 *	Must be between 1-15
 *
-	_align 	4
-Bank1_SoundPlayer_SoundDurations
-	BYTE	#8
-	BYTE	#11
+	_align 	5
+Bank1_Durations
 	BYTE	#6
 	BYTE	#10
-*
-*	Can be set 1-7
-*
-	_align 	4
-Bank1_SoundPlayer_SoundSlowDown
-	BYTE	#2
-	BYTE	#2
-	BYTE	#3
 	BYTE	#4
-
-	_align	8
-Bank1_SoundPlayer_SoundData_Pointers
-	BYTE	#<Bank1_SoundPlayer_SoundData_1
-	BYTE	#>Bank1_SoundPlayer_SoundData_1
-	BYTE	#<Bank1_SoundPlayer_SoundData_2
-	BYTE	#>Bank1_SoundPlayer_SoundData_2
-	BYTE	#<Bank1_SoundPlayer_SoundData_3
-	BYTE	#>Bank1_SoundPlayer_SoundData_3
-	BYTE	#<Bank1_SoundPlayer_SoundData_4
-	BYTE	#>Bank1_SoundPlayer_SoundData_4
+	BYTE	#8
+	BYTE	#7
 *
-*	Every byte is build up:
-*	0-4: Frequency
-*	5-8: Volume
+*	This os the first freq played. Cannot reach above 15.
 *
-	_align	8
-Bank1_SoundPlayer_SoundData_1
-	BYTE	#%00100010
-	BYTE	#%00101100
-	BYTE	#%01010000
-	BYTE	#%01011000
-	BYTE	#%10010000
-	BYTE	#%00101100
-	BYTE	#%01100100
-	BYTE	#%00100010
+	_align	5
+Bank1_StartFreqs
+	BYTE	#4
+	BYTE	#6
+	BYTE	#7
+	BYTE	#3
+	BYTE	#3
+*
+*	Low  Nibble: Small counter for one note.
+*	High Nibble: Behaviour of the freq:
+*                    0: No change
+*		     1: INC (lower the voice)
+*		     2: DEC (higher the voice)	
+*		     3: Vibratio	
+*
+	_align	5
+Bank1_EffectSettings
+	BYTE	#$12
+	BYTE	#$33
+	BYTE	#$21
+	BYTE	#$33
+	BYTE	#$23
 
-	_align	11
-Bank1_SoundPlayer_SoundData_2
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#%01000111
-	BYTE	#%01101000
-	BYTE	#%10000111
-	BYTE	#%10000011
-	BYTE	#%01001101
-
-	_align	6
-Bank1_SoundPlayer_SoundData_3
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#%01001110
-	BYTE	#%00100111
-	BYTE	#%00111110
-
-	_align	10
-Bank1_SoundPlayer_SoundData_4
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#%01001000
-	BYTE	#%00101000
-	BYTE	#%00100100
-	BYTE	#%00100010
-	BYTE	#%00100001
-	BYTE	#%01100010
+	_align	2
+Bank1_FreqAdder
+	BYTE	#8
+	BYTE	#248
 
 *Routines Section 
 *----------------------------------
@@ -2140,7 +2358,7 @@ Bank1_SoundPlayer_SoundData_4
 *
 *	temp18 is used only for new sound registration.
 *	0-3:	The sound id (max of 16)
-*	4:	Set if the sound must be looped.
+*	4: 	FREE
 *	5:	Force Mute channel 0
 *	6:	Force Mute Channel 1
 *	7:	Register sound (1) / Play sound (0)
@@ -2161,177 +2379,210 @@ SoundCounters = $96
 *	high nibble: channel1
 * 
 SoundSettings = $97
-*	0-5: free
-*	6  : loop for channel0
-*	7  : loop for channel1
+*	0-1: One Note Duration for Channel0
+*	2-3: One Note Duration for Channel1
+*	4-5: Freq Changer C0
+*	6-7: Freq Changer C1
 *
-SoundChannels = $98
+SoundIDs = $98
 *	low  nibble: channel0
 *	high nibble: channel1
 * 
-SoundPointers = $99
+SoundFreqs = $99
 *	low  nibble: channel0
 *	high nibble: channel1
 
+SoundPlayer_BaseVol = 6
 
 Bank1_SoundPlayer
+
 	LDA	temp18
-	CMP	#0
-	BNE	Bank1_SoundSettingsMustBeDone
-	JMP	Bank1_No_New_Sound
-Bank1_SoundSettingsMustBeDone
+	BMI	Bank1_RegisterNewSound
 	AND	#%01100000
 	CMP	#0
-	BEQ	Bank1_NoMutingButSetting
-	CMP	#%01100000
-	BNE	Bank1_NoMutingForBoth
+	BNE	Bank1_MuteChannels
+	JMP	Bank1_PlaySound
+
+Bank1_MuteChannels
+	ASL	
+	STA	temp18
+
+	BPL	Bank1_NoChannel1_Mute
+	JSR	Bank1_MuteChannel1
+Bank1_NoChannel1_Mute
+	BIT	temp18
+	BVC	Bank1_NoChannel0_Mute
+	JSR	Bank1_MuteChannel0
+Bank1_NoChannel0_Mute
+	JMP	Bank1_ReturnFromSP
+
+Bank1_MuteChannel1
+	LDA	SoundCounters
+	AND	#$0F
+	STA	SoundCounters
+
+	LDA	SoundIDs
+	AND	#$0F
+	STA	SoundIDs
+
+	LDA	SoundSettings
+	AND	#%00110011
+	STA	SoundSettings
 
 	LDA	#0
-	STA	SoundCounters
-	STA	SoundSettings
-	JMP	Bank1_ReturnFromSP
+	STA	AUDV1
 
-Bank1_NoMutingForBoth
-	TAX
-	AND	#%00100000
-	CMP	#%00100000
-	BNE	Bank1_NoMutingForChannel0
+	RTS
 
-	STY	AUDV0
+Bank1_MuteChannel0
 	LDA	SoundCounters
 	AND	#$F0
 	STA	SoundCounters
 
+	LDA	SoundIDs
+	AND	#$F0
+	STA	SoundIDs
+
 	LDA	SoundSettings
-	AND	#%10111000
+	AND	#%11001100
 	STA	SoundSettings
 
-Bank1_NoMutingForChannel0
-	TXA	
-	AND	#%01000000
-	CMP	#%01000000
-	BPL	Bank1_NoMutingForChannel1
+	LDA	#0
+	STA	AUDV0
 
-	STY	AUDV1
+	RTS
+
+Bank1_RegisterNewSound
+	LDA	temp18
+	AND	#%00001111
+	STA	temp18
+	TAX
+
 	LDA	SoundCounters
 	AND	#$0F
-	STA	SoundCounters
-
+	CMP	#0
+	BNE	Bank1_NOTFoundChannel_3
+	JMP	Bank1_FoundChannel
+Bank1_NOTFoundChannel_3
+	LDA	SoundCounters
+	AND	#$F0
+	CMP	#0
+	BNE	Bank1_NOTFoundChannel_4
+	LDY	#1
+	JMP	Bank1_FoundChannel
+Bank1_NOTFoundChannel_4	
 	LDA	SoundSettings
-	AND	#%01000111
-	STA	SoundSettings
+	AND	#%11000000
+	CMP	#0
+	BEQ	Bank1_LoopIsNotRelevant
+	CMP	#%11000000
+	BEQ	Bank1_LoopIsNotRelevant
 	
-
-Bank1_NoMutingForChannel1
-
-	JMP	Bank1_ReturnFromSP
-
-Bank1_NoMutingButSetting
-	LDY	#0
-	LDA	temp18
-
+	BPL	Bank1_NOTFoundChannel_5
+	JMP	Bank1_FoundChannel
+Bank1_NOTFoundChannel_5	
+	LDY	#1
+	JMP	Bank1_FoundChannel
+	
+Bank1_LoopIsNotRelevant
+	LDA	SoundIDs
 	AND	#$0F
-	TAX
-	
-	LDA	Bank1_SoundPlayer_SoundChannels,x
+	CMP	temp18
+	BNE	Bank1_NOTFoundChannel_1
+	JMP	Bank1_FoundChannel
+
+Bank1_NOTFoundChannel_1
+	LDA	SoundIDs
+	LSR
+	LSR
+	LSR
+	LSR
+	CMP	temp18
+	BNE	Bank1_NOTFoundChannel_2
+	LDY	#1
+	JMP	Bank1_FoundChannel
+
+Bank1_NOTFoundChannel_2
+	LDA	SoundCounters
+	AND	#$0F
 	STA	temp01
 
-	LDA	SoundChannels
-	AND	#$0F
-	STA	temp02
+	LDA	SoundCounters
+	LSR
+	LSR
+	LSR
+	LSR
+	STA	temp01
+
+	LDA	temp02
 	CMP	temp01
-	BNE	Bank1_Channel_NotFound1
-	JMP	Bank1_Channel_Found
-Bank1_Channel_NotFound1
-	LDA	SoundChannels
-	LSR
-	LSR
-	LSR
-	LSR
-	CMP	temp01	
-	BNE	Bank1_Channel_NotFound2
+	BCC	Bank1_FoundChannel
 	LDY	#1
-	JMP	Bank1_Channel_Found
 
-Bank1_Channel_NotFound2
-	CMP	temp02
-	BCS	Bank1_CounterOfChannel0IsSmaller
-	LDY	#1
-Bank1_CounterOfChannel0IsSmaller
-* X > Y 
-*
-* LDA	Y (temp01)
-* CMP	X (temp02)
-* BCS	else
-*
-Bank1_Channel_Found
-	LDA	Bank1_SoundPlayer_SoundDurations,x
+Bank1_FoundChannel
+
+	LDA	Bank1_Durations,x
 	STA	temp02
 
-	TXA
+	LDA	Bank1_StartFreqs,x
 	STA	temp03	
 
-	LDA	temp18
-	AND	#%00010000
-	ASL
-	ASL
-	STA	temp05
+	LDA	Bank1_EffectSettings,x	
+	STA	temp04
 
-	LDA	Bank1_SoundPlayer_SoundSlowDown,x
-	STA	temp06
-
-	CPY	#0
-	BEQ	Bank1_Save_On_Channel_0
-	JMP	Bank1_Save_On_Channel_1
-Bank1_Save_On_Channel_0
-
-	LDA	temp01
-	STA	AUDC0
-
-	LDA	SoundChannels
-	AND	#$F0
-	ORA	temp01
-	STA	SoundChannels
+	CPY	#1
+	BEQ	Bank1_SetSettingsForC1
 
 	LDA	SoundCounters
 	AND	#$F0
 	ORA	temp02
 	STA	SoundCounters
 
-	LDA	SoundPointers
+	LDA	SoundFreqs
 	AND	#$F0
-	ORA	temp03
-	STA	SoundPointers
+	ORA	temp03	
+	STA	SoundFreqs
+
+	LDA	SoundIDs	
+	AND	#$F0
+	ORA	temp18	
+	STA	SoundIDs
+
+	LDA	Bank1_SoundChannels,x
+	STA	AUDC0
 
 	LDA	SoundSettings
-	AND	#%10111000
-	ORA	temp05
-	ORA	temp06
-	STA	SoundSettings	
+	AND	#%11001100
+	ORA	temp04
+	STA	SoundSettings
 
 	JMP	Bank1_ReturnFromSP
-Bank1_Save_On_Channel_1
-
-	LDA	SoundChannels
-	AND	#$0F
-	STA	SoundChannels
-
+	
+Bank1_SetSettingsForC1
 	LDA	SoundCounters
-	AND	#$0F
+	AND	#$0F	
 	STA	SoundCounters
 
-	LDA	SoundPointers
-	AND	#$0F
-	STA	SoundPointers
+	LDA	SoundFreqs
+	AND	#$0F	
+	STA	SoundFreqs
 
-	LDA	temp01
+	LDA	SoundIDs
+	AND	#$0F	
+	STA	SoundIDs
+
+	LDA	Bank1_SoundChannels,x
 	STA	AUDC1
+
+	LDA	SoundSettings	
+	AND	#%00110011
+	STA	SoundSettings
+
+	LDA	temp04
 	ASL
 	ASL
-	ASL
-	ASL
-	ORA	SoundChannels
-	STA	SoundChannels
+	ORA	SoundSettings
+	STA	SoundSettings
 
 	LDA	temp02
 	ASL
@@ -2346,209 +2597,277 @@ Bank1_Save_On_Channel_1
 	ASL
 	ASL
 	ASL
-	ORA	SoundPointers
-	STA	SoundPointers	ASL 	temp05
-	LDA	temp06	
-	ASL
-	ASL	
-	ASL
-	STA	temp06
+	ORA	SoundFreqs
+	STA	SoundFreqs
 
-	LDA	SoundSettings
-	AND	#%01000111
-	ORA	temp05
-	ORA	temp06
-	STA	SoundSettings
+	LDA	temp18
+	ASL
+	ASL
+	ASL
+	ASL
+	ORA	SoundIDs
+	STA	SoundIDs
 
 	JMP	Bank1_ReturnFromSP
-Bank1_No_New_Sound
-	LDA	#0
-	STA	temp06
-	STA	temp07
+
+Bank1_PlaySound
+Bank1_PlaySound_0
+
+	LDA	SoundSettings
+	AND	#%00000011
+	SBC	#1
+	CMP	#255
+	BEQ	Bank1_DecrementTheBigCounter0
+	STA	temp01
+
+	LDA	SoundSettings
+	AND	#%11111100
+	ORA	temp01
+	STA	SoundSettings
+	JMP	Bank1_ReturnFromSP
+
+Bank1_DecrementTheBigCounter0
+	LDA	SoundIDs
+	AND	#$0F
+	TAX
+	LDA	Bank1_EffectSettings,x	
+	AND	#$0F
+	STA	temp01
+
+	LDA	SoundSettings
+	AND	#%11111100
+	ORA	temp01
+	STA	SoundSettings
 
 	LDA	SoundCounters
 	AND	#$0F
 	CMP	#0
-	BNE	Bank1_Play_Channel0
-	LDA	SoundSettings
-	AND	#%11111000
-	STA	SoundSettings
+	BNE	Bank1_PlaySound0
+	JMP	Bank1_Sound0IsEmpty
 
-	JMP	Bank1_Finished_Channel0
-Bank1_Play_Channel0
+Bank1_PlaySound0
+	TAX
+	DEX
+
+	CPX	#0
+	BNE	Bank1_Sound0_Generate
+
+	JSR	Bank1_MuteChannel0
+	JMP	Bank1_Sound0IsEmpty
+
+Bank1_Sound0_Generate
+	LDY	#SoundPlayer_BaseVol
+
+	TXA
+	CMP	#SoundPlayer_BaseVol
+	BCS	Bank1_SaveVol0
 	TAY
+Bank1_SaveVol0
+	STY	AUDV0
+
+	LDA	SoundFreqs
+	AND	#$0F
+	TAY
+
+	LDA	SoundSettings
+	AND	#%00110000
+	LSR
+	LSR
+	LSR
+	LSR
+	CMP	#0
+	BEQ	Bank1_SaveFreq0
+	CMP	#1
+	BEQ	Bank1_INCFreq0
+	CMP	#2
+	BEQ	Bank1_DECFreq0
+
+	LDA	counter
+	AND	#3
+	CMP	#3
+	BNE	Bank1_SaveFreq0
+
+	STY	temp01
+	LDA	counter
+	AND	#4
+	LSR
+	LSR
+
+	TAY
+	LDA	Bank1_FreqAdder,y
+	CLC
+	ADC	temp01
+	TAY
+
+	JMP	Bank1_SaveFreqAndVar0
+
+Bank1_INCFreq0
+	INY
+	JMP	Bank1_SaveFreqAndVar0
+
+Bank1_DECFreq0
 	DEY
 
-*	LDA	#$88
-*	STA	COLUBK
+Bank1_SaveFreqAndVar0
+	LDA	SoundFreqs
+	AND	#$F0
+	STA	SoundFreqs
 
-	LDA	SoundPointers
-	AND	#$0F
-	ASL
-	TAX
+	TYA	
+	ORA	SoundFreqs
+	STA	SoundFreqs
+Bank1_SaveFreq0
+	STY	AUDF0
 
-	LDA	Bank1_SoundPlayer_SoundData_Pointers,x
-	STA	temp01
-	LDA	Bank1_SoundPlayer_SoundData_Pointers+1,x
-	STA	temp02	
-
-	LDA	(temp01),y
-	STA	AUDF0
-	
-	LSR
-	LSR
-	LSR	
-	LSR
-	LSR
-	CMP	#0
-	BEQ	Bank1_NoVolINC0
-	CLC
-	ADC	#2
-Bank1_NoVolINC0
-	STA	temp06
-***	STA	AUDV0
-
-	LDA	SoundSettings
-	AND	#%11111000
-	STA	temp13
-
-	LDA	SoundSettings
-	AND	#%00000111
-	SEC
-	SBC	#1
-	AND	#%00000111
-	ORA	temp13
-	STA	SoundSettings
-	AND	#%00000111		
-	CMP	#0
-	BNE	Bank1_Finished_Channel0
-
-	LDA	SoundSettings
-	AND	#%11111000	
-	ORA	Bank1_SoundPlayer_SoundSlowDown,x
-	STA	SoundSettings
-
-*	LDA	counter
-*	AND 	Bank1_SoundPlayer_SoundSlowDown,x	
-*	CMP	Bank1_SoundPlayer_SoundSlowDown,x
-*	BNE	Bank1_Finished_Channel1
-
-	CPY	#0
-	BNE	Bank1_NoLoopResetChannel0
-	BIT	SoundSettings
-	BVC	Bank1_NoLoopResetChannel0
-	LDY	Bank1_SoundPlayer_SoundDurations,x	
-Bank1_NoLoopResetChannel0
-	STY	temp03
-	
 	LDA	SoundCounters
 	AND	#$F0
-	ORA	temp03
 	STA	SoundCounters
 
-Bank1_Finished_Channel0
+	TXA
+	ORA	SoundCounters
+	STA	SoundCounters		
+
+Bank1_Sound0IsEmpty
+Bank1_PlaySound_1
+	LDA	SoundSettings
+	AND	#%00001100
+	LSR
+	LSR
+	SBC	#1
+	CMP	#255
+	BEQ	Bank1_DecrementTheBigCounter1
+	ASL
+	ASL
+	STA	temp01
+
+	LDA	SoundSettings
+	AND	#%11110011
+	ORA	temp01
+	STA	SoundSettings
+	JMP	Bank1_ReturnFromSP
+
+Bank1_DecrementTheBigCounter1
+	LDA	SoundIDs
+	AND	#$F0
+	LSR
+	LSR
+	LSR
+	LSR
+
+	TAX
+	LDA	Bank1_EffectSettings,x	
+	AND	#$0F
+	ASL
+	ASL
+	STA	temp01
+
+	LDA	SoundSettings
+	AND	#%11110011
+	ORA	temp01
+	STA	SoundSettings
+
+
 	LDA	SoundCounters
 	LSR
 	LSR
 	LSR
 	LSR
 	CMP	#0
-	BNE	Bank1_Play_Channel1
+	BNE	Bank1_PlaySound1
+	JMP	Bank1_Sound1IsEmpty
 
-	LDA	SoundSettings
-	AND	#%11000111
-	STA	SoundSettings
-
-	JMP	Bank1_Finished_Channel1
-Bank1_Play_Channel1
-	TAY
-	DEY
-	
-***	LDA	#$1e
-***	STA	COLUBK
-
-	LDA	SoundPointers
-	LSR
-	LSR
-	LSR
-****	LSR
+Bank1_PlaySound1
 	TAX
+	DEX
 
+	CPX	#0
+	BNE	Bank1_Sound1_Generate
+	JSR	Bank1_MuteChannel1
+	JMP	Bank1_Sound1IsEmpty
 
-	LDA	Bank1_SoundPlayer_SoundData_Pointers,x
-	STA	temp01
-	LDA	Bank1_SoundPlayer_SoundData_Pointers+1,x
-	STA	temp02
-
-	LDA	(temp01),y
-***	STA	$00F0,y
-	STA	AUDF1
-
-	LSR
-	LSR
-	LSR	
-	LSR
-	LSR
-	CMP	#0
-	BEQ	Bank1_NoVolINC1
-	CLC
-	ADC	#2
-Bank1_NoVolINC1
-	STA	temp07
-***	STA	AUDV1
-
-	LDA	SoundSettings
-	AND	#%11000111
-	STA	temp13
-
-	LDA	SoundSettings
-	AND	#%00111000
-	SEC
-	SBC	#%00001000
-	AND	#%00111000
-	ORA	temp13
-	STA	SoundSettings
-	AND	#%00111000		
-	CMP	#0
-	BNE	Bank1_Finished_Channel1
+Bank1_Sound1_Generate
+	LDY	#SoundPlayer_BaseVol
 	
-	LDA	Bank1_SoundPlayer_SoundSlowDown,x
-	ASL
-	ASL
-	ASL
-	ORA	temp13
-	STA	SoundSettings
+	TXA
+	CMP	#SoundPlayer_BaseVol
+	BCS	Bank1_SaveVol1
+	TAY
+Bank1_SaveVol1
+	STY	AUDV1
 
-*	LDA	counter
-*	AND 	Bank1_SoundPlayer_SoundSlowDown,x	
-*	CMP	Bank1_SoundPlayer_SoundSlowDown,x
-*	BNE	Bank1_Finished_Channel1
+	LDA	SoundFreqs
+	LSR
+	LSR
+	LSR
+	LSR
+	TAY
 
-	CPY	#0
-	BNE	Bank1_NoLoopResetChannel1
-	BIT	SoundSettings
-	BPL	Bank1_NoLoopResetChannel1
-	LDY	Bank1_SoundPlayer_SoundDurations,x
-Bank1_NoLoopResetChannel1
-	TYA	
+	LDA	SoundSettings
+	AND	#%11000000
+	ROR
+	ROR
+	ROR
+	CMP	#0
+	BEQ	Bank1_SaveFreq1
+	CMP	#1
+	BEQ	Bank1_INCFreq1
+	CMP	#2
+	BEQ	Bank1_DECFreq1
+
+	LDA	counter
+	AND	#3
+	CMP	#3
+	BNE	Bank1_SaveFreq1
+
+	STY	temp01
+	LDA	counter
+	AND	#4
+	LSR
+	LSR
+
+	TAY
+	LDA	Bank1_FreqAdder,y
+	CLC
+	ADC	temp01
+	TAY
+
+	JMP	Bank1_SaveFreqAndVar1
+
+Bank1_INCFreq1
+	INY
+	JMP	Bank1_SaveFreqAndVar1
+
+Bank1_DECFreq1
+	DEY
+
+Bank1_SaveFreqAndVar1
+	LDA	SoundFreqs
+	AND	#$0F
+	STA	SoundFreqs
+
+	TYA
 	ASL
 	ASL
 	ASL
-	ASL
-	STA 	temp03	
+	ASL	
+	ORA	SoundFreqs
+	STA	SoundFreqs
+Bank1_SaveFreq1
+	STY	AUDF1
 
 	LDA	SoundCounters
 	AND	#$0F
-	ORA	temp03
 	STA	SoundCounters
 
-Bank1_Finished_Channel1
-*Bank1_SetVolumes
-	LDA	temp06
-	STA	AUDV0
-	LDA	temp07
-	STA	AUDV1
+	TXA
+	ASL
+	ASL
+	ASL
+	ASL
+	ORA	SoundCounters
+	STA	SoundCounters		
 
+Bank1_Sound1IsEmpty
 Bank1_ReturnFromSP
 	LDA	#0
 	STA	temp18
@@ -2710,7 +3029,6 @@ PressedDelay = $C8
 *	5th bit   : Visible / Non-visible
 *	All others: counter
 
-
 	LDX	#8
 Bank2InitScrollingColumns	
 	STA	ScrollingColumn1,x
@@ -2844,7 +3162,22 @@ Bank2_DontLeaveTheScreenYet
 	AND	#$F0
 	ORA	temp01
 	STA	PressedDelay
+
 Bank2_NoCounter_ForLeaving
+	LDA	PressedDelay
+	BPL	Bank2_DontPlaySound
+
+	LDY	SoundCounters
+	CPY	#$00
+	BNE	Bank2_DontPlaySound
+*
+*	Register 0th sound.
+*
+	LDA	#$80
+	STA	temp18
+	JSR	Bank2_Call_SoundPlayer
+
+Bank2_DontPlaySound
 	LDA	counter
 	LSR
 	LSR
@@ -2973,12 +3306,6 @@ Bank2WaitCounterNoChange
 	BVS	Bank2_No_Joy0_Still_Not_Released
 	BIT 	INPT4
 	BMI	Bank2_No_Joy0_Fire_Was_Pressed_At_Overscan	
-*
-*	Register 0th sound with loop.
-*
-	LDA	#%10010000
-	STA	temp18
-	JSR	Bank2_Call_SoundPlayer
 
 	LDA	PressedDelay
 	ORA	#%10000000
@@ -3012,7 +3339,7 @@ Bank2_No5thBitFlip
 **	LDA	SoundCounters
 **	CMP	#0
 **	BNE	Bank2_NoSoundTest
-
+**
 **	LDA	#$01
 **	BIT	SWCHB
 **	BNE	Bank2_NoSoundTest
@@ -5227,7 +5554,7 @@ OverScanBank3
 	AND	#%00011111
 	BNE 	Bank3_NoPlaySound
 
-	LDA	#%00000011
+	LDA	#$83
 	STA	temp18
 	JSR	Bank3_Call_SoundPlayer
 Bank3_NoPlaySound
@@ -12887,16 +13214,16 @@ bank8_ClearSCRAM
 	INY
 	BPL 	bank8_ClearSCRAM
 
-	lda	#>(EnterScreenBank1-1)
-**	lda	#>(EnterScreenBank2-1)
+**	lda	#>(EnterScreenBank1-1)
+	lda	#>(EnterScreenBank2-1)
    	pha
-   	lda	#<(EnterScreenBank1-1)
-**   	lda	#<(EnterScreenBank2-1)
+**   	lda	#<(EnterScreenBank1-1)
+   	lda	#<(EnterScreenBank2-1)
    	pha
    	pha
    	pha
-**  	ldx	#2
-   	ldx	#1 
+**  	ldx	#1
+   	ldx	#2 
   	jmp	bankSwitchJump
 
 	saveFreeBytes
