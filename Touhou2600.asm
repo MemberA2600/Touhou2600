@@ -140,7 +140,8 @@ eikiX = $AE
 eikiY = $AF
 *	
 *	0-3: Y Position
-*	4-7: Free
+*	  4: No More Lives Flag
+*	5-7: Free
 *
 eikiSettings = $B0
 *	0-1: 3 counter
@@ -156,16 +157,32 @@ eikiSettings2 = $B1
 *	0-3: SpriteIndex
 *	4-5: CoolDown
 *	  6: Invincible flag 
-*	  7: Free
+*	  7: DeathSoundFlag
 *
 DanmakuColor = $B2
 StickBuffer = $B3
+eikiBackColor = $B4
 
+ScoreColorAdder = $B5
+*
+*	0-2: Amplitude
+*	3-5: Free
+*	6-7: BombsSpriteBuffer
+*
+IndicatorSettings = $B6
+*
+*	0-2: LivesSpriteCounter
+* 	3-5: BombSpriteCounter
+*	6-7: LivesSpriteBuffer
+*
 
 Eiki_Height = 23
 Eiki_HeightPlus1 = 24
 NumberOfLines = 35
 StickColor = $30
+
+	LDA	#$32
+	STA	LivesAndBombs
 
 	LDA	#58
 	STA	eikiX
@@ -180,7 +197,11 @@ StickColor = $30
 	JSR	Bank1_SoundPlayer
 
 	LDA	#0
+	STA	ScoreColorAdder
 	STA	eikiSettings
+	STA	StickBuffer
+	STA	IndicatorSettings
+	STA	ScoreColorAdder
 
 	LDA	#%01000000
 	STA	eikiSettings2
@@ -188,9 +209,6 @@ StickColor = $30
 	LDA	LevelAndCharge
 	ORA	#%00000001
 	STA	LevelAndCharge
-
-	LDA	#%00000000
-	STA	StickBuffer
 
 	LDX	#NumberOfLines
 	DEX
@@ -261,6 +279,9 @@ OverScanBank1
 * begins.
 *
 
+	LDA	#$00
+	STA	eikiBackColor
+
 	ASL	StickBuffer
 
 	BIT 	eikiSettings2
@@ -317,6 +338,29 @@ Bank1_NoTempInv
 
 	BIT 	INPT4
 	BMI	Bank1_CannotCastSpell
+
+	LDA	LivesAndBombs
+	AND	#$0F
+	CMP	#0
+	BEQ	Bank1_CannotCastSpell
+	SEC
+	SBC	#1
+	STA	temp01
+
+	LDA	LivesAndBombs
+	AND	#$F0
+	ORA	temp01
+	STA	LivesAndBombs
+
+	LDA	ScoreColorAdder
+	AND	#%00111111
+	ORA	#%01000000
+	STA	ScoreColorAdder
+
+	LDA	IndicatorSettings
+	AND	#%11000111
+	ORA	#%00001000
+	STA	IndicatorSettings
 
 	LDA	LevelAndCharge
 	AND	#%11000000
@@ -541,7 +585,14 @@ Bank1_EikiDied
 	STA	LevelAndCharge
 	CMP	#%00011111
 	BNE	Bank1_Eiki_NoRevive
-	
+*
+*	NoMoreLives
+*
+	LDA	eikiY
+	AND	#%00010000
+	CMP	#%00010000
+	BEQ	Bank1_Eiki_NoRevive
+
 	LDA	eikiSettings
 	AND	#%01111111
 	STA	eikiSettings
@@ -621,6 +672,12 @@ Bank1_EikiDead
 	ORA	#%00001100
 	STA	eikiSettings
 
+	LDA	LevelAndCharge
+	LSR
+	AND	#$0F
+	ORA	#$40
+	STA	eikiBackColor
+
 	JMP	Bank1_EikiGotSpritePointer
 Bank1_EikiSpell
 	LDA	eikiSettings2
@@ -696,6 +753,45 @@ Bank1_Erase_PF
 
 Bank1_Fill_PF_Ended
 
+	LDA	counter
+	AND	#%01111111
+	CMP	#%01111111
+	BNE	Bank1_DontAdd1Point
+
+	CLC
+	SED	
+
+	LDA	Score_6
+	ADC	#$01
+	STA	Score_6
+
+	LDA	Score_5
+	ADC	#0
+	STA	Score_5
+	
+	LDA	Score_4
+	ADC	#0
+	STA	Score_4	
+
+	LDA	Score_3
+	ADC	#0
+	STA	Score_3	
+
+	LDA	Score_2
+	ADC	#0
+	STA	Score_2	
+
+	LDA	Score_1
+	ADC	#0
+	STA	Score_1	
+
+	LDA	ScoreColorAdder
+	ORA	#%00000111
+	STA	ScoreColorAdder
+
+	CLD
+Bank1_DontAdd1Point
+
 *VSYNC
 *----------------------------7
 * This is a fixed section in
@@ -742,6 +838,94 @@ VBLANKBank1
 	STA	temp19
 	JSR	Bank1_SoundPlayer
 
+	LDA	eikiX			
+	AND	#%01111111
+	STA	temp11
+	STA	temp12				; 11 
+
+	CLC
+	ADC	#4
+	STA	temp13				; 7
+
+	lda	counter
+	and	#1
+	tax
+	LDA	Bank1M1AddX,x
+	CLC
+	ADC	temp11
+	STA	temp14
+
+	LDX	#NumOfLoop
+Bank1_MaxLoop
+	LDA	temp11,x
+	CLC				
+	ADC	Bank1MinX,x			
+	CMP	Bank1MaxX,x			
+ 	BCS 	Bank1_OverMax	
+	JMP	Bank1_NotOverMax
+Bank1_OverMax
+	LDA	Bank1MaxX,x
+Bank1_NotOverMax
+	STA	temp11,x
+	DEX
+	BPL	Bank1_MaxLoop
+
+
+
+	LDA	eikiSettings2
+	BPL	Bank1_NoHitSound
+
+	AND	#%01111111
+	STA	eikiSettings2
+
+	LDA	#$84
+	STA	temp18
+	LDA	#255
+	STA	temp19
+	JSR	Bank1_SoundPlayer
+
+	LDA	LivesAndBombs
+	AND	#$F0
+	CMP	#0
+	BEQ	Bank1_WasLastLife
+	SEC
+	SBC	#%00010000
+	STA	temp01
+
+	LDA	LivesAndBombs
+	AND	#$0F
+	CMP	#2
+	BCS	Bank1_DontAddBombs
+	LDA	#2
+Bank1_DontAddBombs
+	ORA	temp01
+	STA	LivesAndBombs
+
+	JMP	Bank1_WasNotTheLastOne
+Bank1_WasLastLife
+	LDA	eikiY
+	ORA	#%00010000
+	STA	eikiY
+Bank1_WasNotTheLastOne
+	LDA	IndicatorSettings
+	AND	#%00111000
+	ORA	#%01000001
+	STA	IndicatorSettings
+
+	LDA	LevelAndCharge
+	AND	#%11000000
+	ORA	#%00011111
+	STA	LevelAndCharge
+
+Bank1_NoHitSound
+	LDA	counter
+	AND	#%00000111
+	CMP	#%00000111
+	BNE	Bank1_NoIndicatorSpriteUpdate
+
+	JSR	Bank1_SetIndicatorSprites
+****	JSR	Bank1_CallDummy
+Bank1_NoIndicatorSpriteUpdate
 
 *SkipIfNoGameSet - VBLANK
 *---------------------------------
@@ -781,33 +965,22 @@ VBlankEndBank1
 ****	JMP 	Bank1_Main_Ended
 
 Bank1_Eiki_Field
+
+	LDX	eikiBackColor
 	LDA	#0
 	STA	WSYNC
-	STA	COLUBK
+	STX	COLUBK
 	STA	HMCLR
 	STA	PF0		; 9
 
-	STA	PF1
-	STA	PF2
-	STA	GRP0
-	STA	GRP1
+**	STA	PF1
+**	STA	PF2
+**	STA	GRP0
+**	STA	GRP1
 **	STA	ENABL
 **	STA	ENAM0
 **	STA	ENAM1
 
-*
-*	Set basics
-*
-	LDA	#$20
-	STA	NUSIZ1
-
-	LDA	#$10
-	STA	NUSIZ0
-
-	LDA	#%00000101
-	STA	CTRLPF			; 3
-
-	sleep	8
 
 *
 *	Set sprite
@@ -845,23 +1018,8 @@ Bank1_NoIncInvisibility
 	STA	temp04				; 16 (55)
 
 Bank1_InvisibleSprite
+	
 
-	LDA	eikiX			
-	AND	#%01111111
-	STA	temp11
-	STA	temp12				; 11 (66)
-
-	CLC
-	ADC	#4
-	STA	temp13
-
-	lda	counter
-	and	#1
-	tax
-	LDA	Bank1M1AddX,x
-	CLC
-	ADC	temp11
-	STA	temp14
 
 *	LDA	#$1e
 *	STA	COLUBK
@@ -881,23 +1039,9 @@ NumOfLoop=3
 *	LDA	#$1e
 *	STA	COLUBK
 
-	LDX	#NumOfLoop
-Bank1_MaxLoop
-	LDA	temp11,x
-	CLC				
-	ADC	Bank1MinX,x			
-	CMP	Bank1MaxX,x			
- 	BCS 	Bank1_OverMax	
-	JMP	Bank1_NotOverMax
-Bank1_OverMax
-	LDA	Bank1MaxX,x
-Bank1_NotOverMax
-	STA	temp11,x
-	DEX
-	BPL	Bank1_MaxLoop
 
 *	STA	WSYNC
-*	LDA	#$00
+*	LDA	#$1e
 *	STA	COLUBK
 
 	LDX	#NumOfLoop
@@ -912,10 +1056,21 @@ Bank1_DivideLoop
 	DEX
 	BPL	Bank1_NextHorPoz	
 
-	STA	WSYNC
-
-*	LDA	#$00
+*	LDA	#$88
 *	STA	COLUBK
+
+*
+*	Set Basics
+*
+
+	LDA	#$20
+	STA	NUSIZ1
+
+	LDA	#$10
+	STA	NUSIZ0
+
+	LDA	#%00000101
+	STA	CTRLPF			; 3
 
 	ldx	#NumOfLoop
 Bank1_setFine
@@ -928,13 +1083,24 @@ Bank1_setFine
 	DEX
 	BPL	Bank1_setFine
 
+	LDA	eikiY
+	AND	#%00001111
+	STA	temp14
+	CLC
+	ADC	#Eiki_Height
+	STA	temp19	
+	SEC
+	SBC	#HitBoxMinus 
+	CLC
+	SBC	temp14
+	STA	temp12
+
 
 	STA	WSYNC
 	STA	HMOVE
 
 *	LDA	#0
 *	STA	COLUBK
-
 
 *
 *	temp01: Eiki's P0 pointer
@@ -965,17 +1131,6 @@ Bank1_setFine
 	LDA	Eiki_Sprite_Color_Pointers_P1+1,x
 	STA	temp08				; 16 
 
-	LDA	eikiY
-	AND	#%00011111
-	STA	temp14
-	CLC
-	ADC	#Eiki_Height
-	STA	temp19	
-	SEC
-	SBC	#HitBoxMinus 
-	CLC
-	SBC	temp14
-	STA	temp12
 
 
 *
@@ -1253,6 +1408,10 @@ Bank1_ResetThings
 	STA	PF2
 	STA	GRP0
 	STA	GRP1
+
+*	LDA	#$1E
+*	STA	WSYNC
+*	STA	COLUBK
 *
 *	Check Collisions
 *
@@ -1277,22 +1436,42 @@ Bank1_ResetThings
 	AND	#%10001111
 	STA	eikiSettings
 
-	LDA	#$84
-	STA	temp18
-	LDA	#255
-	STA	temp19
-	JSR	Bank1_SoundPlayer
+	LDA	eikiSettings2
+	ORA	#%10000000
+	STA	eikiSettings2
 
-Bank1_EikiUsedSpellSoNoHit
+*	LDA	#$84
+*	STA	temp18
+*	LDA	#255
+*	STA	temp19
+***	JSR	Bank1_SoundPlayer
+	JMP	Bank1_NoExtraSleeps
+
 Bank1_NotHitOnBox
-Bank1_TemporalInvincibility
+**	sleep	5
 Bank1_EikiAlreadyDead
+**	sleep	5
+Bank1_EikiUsedSpellSoNoHit
+**	sleep	5
+Bank1_TemporalInvincibility
+*	STA	WSYNC
+*	STA	WSYNC
+	STA	WSYNC
+Bank1_NoExtraSleeps
 
 	ldx	stack
 	txs	
 	STA	CXCLR
 
 Bank1_Main_Ended
+
+*	LDA	#$00
+*	STA	WSYNC
+*	STA	COLUBK
+
+	JSR	Bank1_DrawScore
+	JSR	Bank1_LivesAndBombs
+
 	JSR	Bank1_TestLines
 
 
@@ -2196,81 +2375,6 @@ Eiki_Color_Spell_P0
 	byte	#$8a
 	byte	#$8e
 	byte	#$1e
-*
-*	Tokens
-*
-	_align	19
-
-Tokens_Sprite_P1_1up
-	byte	#%11111111
-	byte	#%10101101
-	byte	#%10110111
-	byte	#%10110101
-	byte	#%11110111
-	byte	#%10100001
-Tokens_Sprite_P1_Bomb
-	byte	#%11111111
-	byte	#%10111001
-	byte	#%10100101
-	byte	#%10111001
-	byte	#%10100101
-	byte	#%10111001
-Tokens_Sprite_P1_Gold
-	byte	#%11111111
-	byte	#%10011001
-	byte	#%10100101
-	byte	#%10101101
-	byte	#%10100001
-	byte	#%10011101
-	byte	#%11111111	; (0)
-
-	_align	19
-Tokens_Color_P1_1up
-	byte	#$0a
-	byte	#$0c
-	byte	#$0e
-	byte	#$0e
-	byte	#$0e
-	byte	#$0c
-Tokens_Color_P1_Bomb
-	byte	#$0a
-	byte	#$0c
-	byte	#$0e
-	byte	#$0e
-	byte	#$0e
-	byte	#$0c
-Tokens_Color_P1_Gold
-	byte	#$0a
-	byte	#$0c
-	byte	#$0e
-	byte	#$0e
-	byte	#$0e
-	byte	#$0c
-	byte	#$0a
-
-	_align	19
-Tokens_Sprite_P0_1up
-	byte	#%00000000
-	byte	#%01010010
-	byte	#%01001000
-	byte	#%01001010
-	byte	#%00001000
-	byte	#%01011110
-Tokens_Sprite_P0_Bomb
-	byte	#%00000000
-	byte	#%01000110
-	byte	#%01011010
-	byte	#%01000110
-	byte	#%01011010
-	byte	#%01000110
-Tokens_Sprite_P0_Gold
-	byte	#%00000000
-	byte	#%01100110
-	byte	#%01011010
-	byte	#%01010010
-	byte	#%01011110
-	byte	#%01100010
-	byte	#%00000000	; (0)
 
 	_align	19
 Tokens_Color_P0_1up
@@ -2917,6 +3021,85 @@ Bank1_TestLine1
 
 	RTS
 
+Bank1_DrawScore
+	LDA	#0
+	STA	temp19
+
+	lda	#>(Bank5_Display_Score-1)
+   	pha
+   	lda	#<(Bank5_Display_Score-1)
+   	pha
+   	pha
+   	pha
+   	ldx	#5
+   	jmp	bankSwitchJump
+
+Bank1_LivesAndBombs
+	LDA	#0
+	STA	temp19
+
+	lda	#>(Bank5_ShowLivesAndBombs-1)
+   	pha
+   	lda	#<(Bank5_ShowLivesAndBombs-1)
+   	pha
+   	pha
+   	pha
+   	ldx	#5
+   	jmp	bankSwitchJump
+
+Bank1_SetIndicatorSprites
+	LDA	#0
+	STA	temp19
+
+	lda	#>(Bank5_SetIndicatorSprites-1)
+   	pha
+   	lda	#<(Bank5_SetIndicatorSprites-1)
+   	pha
+   	pha
+   	pha
+   	ldx	#5
+   	jmp	bankSwitchJump
+
+
+*Bank1_Add1Point
+*
+*	temp01: Add 1x
+*	temp02: Add 100x
+*	temp03: Add 10000x
+*	temp04: Add 1000000x
+*	temp05: Add 100000000x
+*	temp06: Add 10000000000x
+*
+*	temp19: Return Bank-1
+*
+
+*	LDA	#0
+*	STA	temp19
+*
+*	STA	temp02
+*	STA	temp03
+*	STA	temp04
+*	STA	temp05
+*	STA	temp06
+*
+*	LDA	#1
+*	STA	temp01
+*
+*	lda	#>(Bank5_Add2Score-1)
+*  	pha
+* 	lda	#<(Bank5_Add2Score-1)
+*   	pha
+*   	pha
+*   	pha
+*   	ldx	#5
+
+**	LDA	#$FF
+**	STA	$F0
+
+*   	jmp	bankSwitchJump
+
+
+
 ###End-Bank1
 
 
@@ -2979,22 +3162,22 @@ EnterScreenBank2
 *
 *
 
-	LDA	#$12
+	LDA	#$00
 	STA	HScore_1
 
-	LDA	#$34
+	LDA	#$00
 	STA	HScore_2
 
-	LDA	#$56
+	LDA	#$05
 	STA	HScore_3
 
-	LDA	#$78
+	LDA	#$00
 	STA	HScore_4
 
-	LDA	#$90
+	LDA	#$00
 	STA	HScore_5
 
-	LDA	#$12
+	LDA	#$00
 	STA	HScore_6
 
 	LDA	#%01100000
@@ -5552,6 +5735,7 @@ OverScanBank3
 
 	LDA	SpriteCounter
 	AND	#%00011111
+	CMP	#%00011111
 	BNE 	Bank3_NoPlaySound
 
 	LDA	#$83
@@ -11875,6 +12059,1030 @@ start_bank4
 	fill	256
 ###Start-Bank5
 	
+Bank5_Display_Score
+****	STA	WSYNC
+
+	LDA	ScoreColorAdder
+	AND	#7
+	TAX
+	ADC 	#$18
+	STA	temp18
+
+	CPX	#0
+	BEQ	Bank5_NoDecrementGlow
+
+	DEX
+	LDA	ScoreColorAdder
+	AND	#%11111000	
+	STA	ScoreColorAdder
+	TXA
+	ORA	ScoreColorAdder
+	STA	ScoreColorAdder
+Bank5_NoDecrementGlow
+
+	LDA	Score_1
+	AND	#$0F
+	STA	temp05
+
+	LDA	Score_1
+	LSR
+	LSR
+	LSR
+	LSR
+	STA	temp01
+
+	LDA	Score_2
+	AND	#$0F
+	STA	temp02
+
+	LDA	Score_2
+	LSR
+	LSR
+	LSR
+	LSR
+	STA	temp09
+
+	LDA	Score_3
+	AND	#$0F
+	STA	temp10
+
+	LDA	Score_3
+	LSR
+	LSR
+	LSR
+	LSR
+	STA	temp06
+
+	LDA	Score_4
+	AND	#$0F
+	STA	temp07
+
+	LDA	Score_4
+	LSR
+	LSR
+	LSR
+	LSR
+	STA	temp03
+
+	LDA	Score_5
+	AND	#$0F
+	STA	temp04
+
+	LDA	Score_5
+	LSR
+	LSR
+	LSR
+	LSR
+	STA	temp11
+
+	LDA	Score_6
+	AND	#$0F
+	STA	temp12
+
+	LDA	Score_6
+	LSR
+	LSR
+	LSR
+	LSR
+	STA	temp08
+
+*
+*	temp19 = (number of bank) - 1 
+*
+	LDA	#0
+	STA	temp19
+
+	lda	#>(Bank8_DynamicText-1)
+   	pha
+   	lda	#<(Bank8_DynamicText-1)
+   	pha
+   	pha
+   	pha
+   	ldx	#8
+   	jmp	bankSwitchJump
+
+**Bank5_MultiplyBy10
+**	CLC
+**
+**	STA	temp18
+**	
+**	ASL
+**	ASL
+**	ADC	temp18
+**	ASL
+**
+**	RTS
+
+*Bank5_Add2Score
+*
+**	LDA	#$FF
+**	STA	$F1
+**
+*	CLC
+*	SED	
+*
+*	LDA	Score_6
+*	ADC	temp01
+*	STA	Score_6
+*
+*	LDA	Score_5
+*	ADC	temp02
+*	STA	Score_5
+*	
+*	LDA	Score_4
+*	ADC	temp03
+*	STA	Score_4	
+*
+*	LDA	Score_3
+*	ADC	temp04
+*	STA	Score_3	
+*
+*	LDA	Score_2
+*	ADC	temp05
+*	STA	Score_2	
+*
+*	LDA	Score_1
+*	ADC	temp06
+*	STA	Score_1	
+*
+*	CLD
+
+Bank5_ShowLivesAndBombs
+*
+*	Pointers:
+*
+*	temp01: JinJang
+*	temp03: Star
+*	temp07: NumberOfLives
+*	temp09: NumberOfBombs
+*	temp05: Color glow1
+*	temp06: Color glow2
+*
+*
+
+	LDA	LivesAndBombs
+	AND	#$F0
+	LSR
+	STA	temp01
+	LDA	#<Bank5_Numbers
+	CLC
+	ADC	temp01
+	STA	temp07
+
+	LDA	LivesAndBombs
+	AND	#$0F
+	ASL
+	ASL
+	ASL
+	STA	temp01
+	LDA	#<Bank5_Numbers
+	CLC
+	ADC	temp01
+	STA	temp09
+	
+	LDA	IndicatorSettings	
+	AND	#%11000000
+	CMP	#0
+	BNE	Bank5_AddGlowToFirst
+	LDA	#0	
+	sleep	6
+	JMP	Bank5_NoGlowAddedToFirst
+Bank5_AddGlowToFirst
+	LDA	IndicatorSettings
+	AND	#%00000111
+	TAX
+	LDA	Bank5_AdderValueOnCounter,x
+Bank5_NoGlowAddedToFirst
+	STA	temp05
+
+	LDA	ScoreColorAdder	
+	AND	#%11000000
+	CMP	#0
+	BNE	Bank5_AddGlowToSecond
+	LDA	#0	
+	sleep	12
+	JMP	Bank5_NoGlowAddedToSecond
+Bank5_AddGlowToSecond
+	LDA	IndicatorSettings
+	LSR
+	LSR
+	LSR
+	AND	#%00000111
+	TAX
+	LDA	Bank5_AdderValueOnCounter,x
+Bank5_NoGlowAddedToSecond
+	STA	temp06
+	
+*ScoreColorAdder = $B5
+*
+*	0-2: Amplitude
+*	3-5: Free
+*	6-7: BombsSpriteBuffer
+*
+*IndicatorSettings = $B6
+*
+*	0-2: LivesSpriteCounter
+* 	3-5: BombSpriteCounter
+*	6-7: LivesSpriteBuffer
+*
+	CLC
+
+	LDA	IndicatorSettings
+	AND	#%11000000
+	ROL
+	ROL
+	ROL
+	ASL
+	TAX				
+
+
+	LDA	Bank5_JinJangPointers,x
+	STA	temp01
+	
+	LDA	Bank5_JinJangPointers+1,x
+	STA	temp02
+
+
+	LDA	#>Bank5_Numbers
+	STA	temp08
+	STA	temp10			; 8 
+
+	LDA	#0
+	STA	WSYNC
+	STA	HMCLR
+	STA	COLUBK
+	STA	PF1
+	STA	PF2			; 12
+
+	LDA	IndicatorSettings
+	AND	#%00000111
+	ASL
+	ASL
+	ASL
+	ADC	temp01
+***	STA	temp01			; 17 (29)
+	BYTE	#$8D
+	BYTE	#temp01
+	BYTE	#0
+
+	LDA	#$04
+	STA	RESP0
+	STA	RESP1			; 6 (43)
+
+
+	STA	NUSIZ0
+	STA	NUSIZ1			; 8 (37)
+
+	LDA	#$20
+	STA	HMP0
+	LDA	#$30
+	STA	HMP1			; 10 (53)
+
+	CLC
+	LDA	ScoreColorAdder		; 3 
+	AND	#%11000000		; 2 
+
+	STA	WSYNC			; 76
+	STA	HMOVE			; 3
+
+	ROL								
+	ROL				 
+	ROL
+	ASL
+	TAX				; 8 (11)				
+
+	LDA	Bank5_StarPointers,x
+	STA	temp03
+
+	LDA	Bank5_StarPointers+1,x
+	STA	temp04			; 16 (27)
+
+	LDA	IndicatorSettings
+	AND	#%00111000
+	ADC	temp03
+	STA	temp03			; 11 (38)
+
+	LDY	#7			; 2 (40)
+
+	CLC					
+
+	LDA	Bank5_JingJang_Colors,y ; 5 
+	ADC	temp05			; 3
+	STA	COLUP0			; 3
+	STA	COLUP1			; 3
+
+	TSX	
+	STX	temp17
+
+Bank5_Indicators_Loop
+	STA	WSYNC			
+Bank5_Indicators_Loop_NoWSYNC
+
+	LDA	(temp01),y		; 5
+	STA	GRP0			; 3 (8)
+
+	LDA	(temp07),y		; 5
+	STA	GRP1			; 3 (16)
+	
+	LDA	Bank5_Star_Colors,y 	; 5 
+	ADC	temp06			; 3
+	TAX				; 2
+	TXS				; 2 (28)
+
+	LAX	(temp09),y		; 5 (33)
+	LDA	(temp03),y		; 5 (38)
+	STA	GRP0			; 3 (41)
+	STX	GRP1			; 3 (44)
+
+	TSX				; 2 (46)	
+
+	STX	COLUP0			; 3
+	STX	COLUP1			; 3 (52)
+
+	DEY				; 2 (54)
+	BMI	Bank5_Indicators_Loop_Ended 	; 2 (56)
+
+	LDA	Bank5_JingJang_Colors,y ; 5 
+	ADC	temp05			; 3
+	STA	COLUP0			; 3
+	STA	COLUP1			; 3 (70)
+
+	JMP	Bank5_Indicators_Loop	; 3 (76)
+
+Bank5_Indicators_Loop_Ended
+	LDA	#0
+	STA	WSYNC
+	STA	GRP0
+	STA	GRP1
+
+	LDX	temp17
+	TXS
+	
+Bank5_ReturnFromAnything
+	LDX	temp19
+	CPX	#255
+	BNE	Bank5_ReturnNoRTS
+	RTS
+Bank5_ReturnNoRTS
+	TXA
+	INX
+
+	TAY
+
+	ASL		
+	TAY
+
+	LDA	Bank5_Return_JumpTable,y
+   	pha
+   	lda	Bank5_Return_JumpTable+1,y
+   	pha
+   	pha
+   	pha
+
+   	jmp	bankSwitchJump
+
+Bank5_SetIndicatorSprites
+	LDA	IndicatorSettings
+	AND	#%00000111
+	TAX
+	CMP	#0
+	BNE	Bank5_AlwaysIncrement1
+
+	LDA	IndicatorSettings
+	AND	#%11000000
+	CMP	#0
+	BEQ	Bank5_NoZeroTheBuffer1
+
+	LDA	IndicatorSettings
+	AND	#%00111111
+	STA	IndicatorSettings
+
+Bank5_NoZeroTheBuffer1
+	JSR	Bank5_CallRandom
+	ADC	Score_6
+	ADC	counter
+	CMP	#252
+	BCC	Bank5_DontIncrement1	
+
+Bank5_AlwaysIncrement1
+	INX	
+	TXA
+	AND	#%00000111
+	STA	temp01
+
+	LDA	IndicatorSettings
+	AND	#%11111000
+	ORA	temp01
+	STA	IndicatorSettings
+			
+Bank5_DontIncrement1
+
+	LDA	IndicatorSettings
+	AND	#%00111000
+	LSR
+	LSR
+	LSR
+	TAX
+	CMP	#0
+	BNE	Bank5_AlwaysIncrement2
+
+	LDA	ScoreColorAdder
+	AND	#%11000000
+	CMP	#0
+	BEQ	Bank5_NoZeroTheBuffer2
+
+	LDA	ScoreColorAdder
+	AND	#%00111111
+	STA	ScoreColorAdder
+
+Bank5_NoZeroTheBuffer2
+	JSR	Bank5_CallRandom
+	ADC	Score_6
+	ADC	counter
+	CMP	#5
+	BCS	Bank5_DontIncrement2	
+
+Bank5_AlwaysIncrement2
+	INX	
+	TXA
+	ASL
+	ASL
+	ASL
+	AND	#%00111000
+	STA	temp01
+
+	LDA	IndicatorSettings
+	AND	#%11000111
+	ORA	temp01
+	STA	IndicatorSettings
+			
+Bank5_DontIncrement2
+
+	JMP	Bank5_ReturnFromAnything
+
+Bank5_CallRandom
+	LDA	random
+	lsr
+	BCC 	*+4
+	EOR	#$d4
+	STA	random
+	rts
+
+*
+*	Data Section
+*
+	_align	6
+
+Bank5_Return_JumpTable
+	BYTE	#>Bank1_Return-1
+	BYTE	#<Bank1_Return-1
+	BYTE	#>Bank2_Return-1
+	BYTE	#<Bank2_Return-1
+	BYTE	#>Bank3_Return-1
+	BYTE	#<Bank3_Return-1
+
+	_align	6
+Bank5_StarPointers
+	BYTE	#<Bank5_Star_0
+	BYTE	#>Bank5_Star_0
+	BYTE	#<Bank5_Star_1
+	BYTE	#>Bank5_Star_1
+	BYTE	#<Bank5_Star_2
+	BYTE	#>Bank5_Star_2
+
+	_align	6
+Bank5_JinJangPointers
+	BYTE	#<Bank5_JinJang_0
+	BYTE	#>Bank5_JinJang_0
+	BYTE	#<Bank5_JinJang_1
+	BYTE	#>Bank5_JinJang_1
+	BYTE	#<Bank5_JinJang_2
+	BYTE	#>Bank5_JinJang_2
+
+	_align  8
+Bank5_JingJang_Colors
+	BYTE	#$02
+	BYTE	#$04
+	BYTE	#$06
+	BYTE	#$08
+	BYTE	#$0a
+	BYTE	#$08
+	BYTE	#$06
+	BYTE	#$04
+
+	_align  8
+Bank5_Star_Colors
+	BYTE	#$12
+	BYTE	#$14
+	BYTE	#$16
+	BYTE	#$18
+	BYTE	#$1a
+	BYTE	#$18
+	BYTE	#$16
+	BYTE	#$14
+
+	_align  8
+Bank5_AdderValueOnCounter
+	BYTE	#0
+	BYTE	#3
+	BYTE	#5
+	BYTE	#5
+	BYTE	#4
+	BYTE	#3
+	BYTE	#2
+	BYTE	#1
+
+	_align	64
+
+Bank5_Star_0
+	byte	#%11000011
+	byte	#%01100110
+	byte	#%00111100
+	byte	#%01111110
+	byte	#%11111111
+	byte	#%00111100
+	byte	#%00011000
+	byte	#%00001000	; (0)
+	byte	#%01100010
+	byte	#%00111100
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%01111110
+	byte	#%00011000
+	byte	#%00001000
+	byte	#%00001000	; (1)
+	byte	#%00000000
+	byte	#%00100100
+	byte	#%00011000
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%00001000
+	byte	#%00001000
+	byte	#%00000000	; (2)
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00010000
+	byte	#%00011100
+	byte	#%00111000
+	byte	#%00001000
+	byte	#%00000000
+	byte	#%00000000	; (3)
+	byte	#%00010000
+	byte	#%00010000
+	byte	#%00000000
+	byte	#%00011011
+	byte	#%11011000
+	byte	#%00000000
+	byte	#%00001000
+	byte	#%00001000	; (4)
+	byte	#%00001000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%10000000
+	byte	#%00000001
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00010000	; (5)
+	byte	#%10000011
+	byte	#%10000000
+	byte	#%00100100
+	byte	#%00011000
+	byte	#%00011000
+	byte	#%00100100
+	byte	#%00000001
+	byte	#%11000001	; (6)
+	byte	#%00000100
+	byte	#%01000010
+	byte	#%10100100
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%00011001
+	byte	#%01001010
+	byte	#%00100000	; (7)
+
+	_align	64
+
+Bank5_Star_1
+	byte	#%11000011
+	byte	#%01100110
+	byte	#%00111100
+	byte	#%01111110
+	byte	#%11111111
+	byte	#%00011100
+	byte	#%00011000
+	byte	#%00001000	; (0)
+	byte	#%01000000
+	byte	#%01100111
+	byte	#%00111100
+	byte	#%11100110
+	byte	#%01100111
+	byte	#%00011001
+	byte	#%00011000
+	byte	#%00000100	; (1)
+	byte	#%00010000
+	byte	#%01011010
+	byte	#%00100100
+	byte	#%01000011
+	byte	#%11000010
+	byte	#%00100100
+	byte	#%01011010
+	byte	#%00001000	; (2)
+	byte	#%01100110
+	byte	#%11000011
+	byte	#%00000000
+	byte	#%10000001
+	byte	#%10000001
+	byte	#%00000000
+	byte	#%11000011
+	byte	#%01100110	; (3)
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00100100
+	byte	#%00011000
+	byte	#%00011000
+	byte	#%00100100
+	byte	#%00000000
+	byte	#%00000000	; (4)
+	byte	#%00011000
+	byte	#%01100110
+	byte	#%01000010
+	byte	#%10000001
+	byte	#%10000001
+	byte	#%01000010
+	byte	#%01100110
+	byte	#%00011000	; (5)
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00010000
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%00001000
+	byte	#%00001000
+	byte	#%00000000	; (6)
+	byte	#%00000000
+	byte	#%01000010
+	byte	#%00111100
+	byte	#%00011000
+	byte	#%01111110
+	byte	#%00011000
+	byte	#%00001000
+	byte	#%00000000	; (7)
+
+	_align	64
+
+Bank5_Star_2
+	byte	#%11000011
+	byte	#%01100110
+	byte	#%00111100
+	byte	#%01111110
+	byte	#%11111111
+	byte	#%00111100
+	byte	#%00011000
+	byte	#%00001000	; (0)
+	byte	#%10000001
+	byte	#%11100111
+	byte	#%01111110
+	byte	#%01111110
+	byte	#%01111110
+	byte	#%11111111
+	byte	#%00111000
+	byte	#%00001000	; (1)
+	byte	#%11000011
+	byte	#%11111111
+	byte	#%01111110
+	byte	#%01111110
+	byte	#%01111110
+	byte	#%11111111
+	byte	#%11111111
+	byte	#%00011100	; (2)
+	byte	#%11011011
+	byte	#%11100111
+	byte	#%01000010
+	byte	#%01111110
+	byte	#%11011011
+	byte	#%11011011
+	byte	#%01111110
+	byte	#%00111100	; (3)
+	byte	#%00011000
+	byte	#%01111110
+	byte	#%11111111
+	byte	#%11000011
+	byte	#%10000001
+	byte	#%11111111
+	byte	#%10011001
+	byte	#%01111110	; (4)
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%01111110
+	byte	#%01000010
+	byte	#%10000001
+	byte	#%10000001
+	byte	#%11111111
+	byte	#%00111100	; (5)
+	byte	#%01100110
+	byte	#%11000011
+	byte	#%10100101
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%10100101
+	byte	#%11000011
+	byte	#%01100110	; (6)
+	byte	#%00000100
+	byte	#%01000010
+	byte	#%10100100
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%00011001
+	byte	#%01001010
+	byte	#%00100000	; (7)
+
+	_align	64
+
+Bank5_JinJang_0
+	byte	#%00111100
+	byte	#%01111010
+	byte	#%11011001
+	byte	#%11110001
+	byte	#%11110001
+	byte	#%11100101
+	byte	#%01100010
+	byte	#%00111100	; (0)
+	byte	#%00111100
+	byte	#%01100110
+	byte	#%11111101
+	byte	#%11110001
+	byte	#%11100001
+	byte	#%11011001
+	byte	#%01000010
+	byte	#%00111100	; (1)
+	byte	#%00111100
+	byte	#%01111110
+	byte	#%11111011
+	byte	#%10011111
+	byte	#%10000111
+	byte	#%10100001
+	byte	#%01000010
+	byte	#%00111100	; (2)
+	byte	#%00111100
+	byte	#%01011110
+	byte	#%10011111
+	byte	#%10101101
+	byte	#%10100101
+	byte	#%10000111
+	byte	#%01000010
+	byte	#%00111100	; (3)
+	byte	#%00111100
+	byte	#%01000110
+	byte	#%10100111
+	byte	#%10001111
+	byte	#%10001111
+	byte	#%10011011
+	byte	#%01011110
+	byte	#%00111100	; (4)
+	byte	#%00111100
+	byte	#%01000010
+	byte	#%10011001
+	byte	#%11000001
+	byte	#%11111101
+	byte	#%11111111
+	byte	#%01100110
+	byte	#%00111100	; (5)
+	byte	#%00111100
+	byte	#%01000010
+	byte	#%11000101
+	byte	#%11110001
+	byte	#%11110001
+	byte	#%11011101
+	byte	#%01111110
+	byte	#%00111100	; (6)
+	byte	#%00111100
+	byte	#%01111010
+	byte	#%11110001
+	byte	#%10110101
+	byte	#%10110101
+	byte	#%11110001
+	byte	#%01100010
+	byte	#%00111100	; (7)
+
+	_align	64
+
+Bank5_JinJang_1
+	byte	#%00111100
+	byte	#%01111010
+	byte	#%11011001
+	byte	#%11110001
+	byte	#%11110001
+	byte	#%11100101
+	byte	#%01100010
+	byte	#%00111100	; (0)
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%11111011
+	byte	#%11010001
+	byte	#%11110101
+	byte	#%11100001
+	byte	#%01100010
+	byte	#%00111100	; (1)
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%01111010
+	byte	#%01111010
+	byte	#%11010101
+	byte	#%11110001
+	byte	#%01110010
+	byte	#%00111100	; (2)
+	byte	#%00011000
+	byte	#%01100110
+	byte	#%00111100
+	byte	#%01110010
+	byte	#%11010101
+	byte	#%11110001
+	byte	#%01110010
+	byte	#%00111100	; (3)
+	byte	#%00111100
+	byte	#%00000000
+	byte	#%00111100
+	byte	#%01110010
+	byte	#%11010101
+	byte	#%11110001
+	byte	#%01110010
+	byte	#%00111100	; (4)
+	byte	#%00011000
+	byte	#%00000000
+	byte	#%00011000
+	byte	#%00110100
+	byte	#%01110010
+	byte	#%01110010
+	byte	#%00110100
+	byte	#%00011000	; (5)
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00011000
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%00111100
+	byte	#%00011000
+	byte	#%00000000	; (6)
+	byte	#%00000000
+	byte	#%00011000
+	byte	#%00110100
+	byte	#%01110010
+	byte	#%01110010
+	byte	#%00100100
+	byte	#%00011000
+	byte	#%00000000	; (7)
+
+	_align	64
+
+Bank5_JinJang_2
+	byte	#%00111100
+	byte	#%01111010
+	byte	#%11011001
+	byte	#%11110001
+	byte	#%11110001
+	byte	#%11100101
+	byte	#%01100010
+	byte	#%00111100	; (0)
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%11111011
+	byte	#%11010001
+	byte	#%11110101
+	byte	#%11100001
+	byte	#%01100010
+	byte	#%00111100	; (1)
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%01111010
+	byte	#%11110101
+	byte	#%11010001
+	byte	#%11100001
+	byte	#%01100010
+	byte	#%01111110	; (2)
+	byte	#%00011000
+	byte	#%00110100
+	byte	#%01110010
+	byte	#%11110001
+	byte	#%11010101
+	byte	#%11110001
+	byte	#%11111001
+	byte	#%01100110	; (3)
+	byte	#%00000000
+	byte	#%00011000
+	byte	#%00110100
+	byte	#%01110010
+	byte	#%11110001
+	byte	#%11111111
+	byte	#%01100110
+	byte	#%00000000	; (4)
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%01110010
+	byte	#%01111110
+	byte	#%00100100
+	byte	#%00000000	; (5)
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%00011000
+	byte	#%00000000
+	byte	#%00000000	; (6)
+	byte	#%00000000
+	byte	#%00011000
+	byte	#%00110100
+	byte	#%01110010
+	byte	#%01110010
+	byte	#%00100100
+	byte	#%00011000
+	byte	#%00000000	; (7)
+
+	_align	80
+
+Bank5_Numbers
+	byte	#%00111100
+	byte	#%01100110
+	byte	#%01001110
+	byte	#%01001010
+	byte	#%01010010
+	byte	#%01110010
+	byte	#%01100110
+	byte	#%00111100	; (0)
+	byte	#%00111100
+	byte	#%00011000
+	byte	#%00011000
+	byte	#%00011000
+	byte	#%01111000
+	byte	#%00111000
+	byte	#%00011000
+	byte	#%00011000	; (1)
+	byte	#%01111110
+	byte	#%01100010
+	byte	#%00110000
+	byte	#%00011000
+	byte	#%00001100
+	byte	#%00000110
+	byte	#%01101110
+	byte	#%00111100	; (2)
+	byte	#%00111100
+	byte	#%01001110
+	byte	#%00000110
+	byte	#%00011100
+	byte	#%00011100
+	byte	#%00000110
+	byte	#%01001110
+	byte	#%00111100	; (3)
+	byte	#%00001100
+	byte	#%00001100
+	byte	#%00001100
+	byte	#%01111110
+	byte	#%01101100
+	byte	#%01100000
+	byte	#%00110000
+	byte	#%00011000	; (4)
+	byte	#%00111000
+	byte	#%01101100
+	byte	#%00000110
+	byte	#%00110110
+	byte	#%01111100
+	byte	#%01000000
+	byte	#%01011110
+	byte	#%01111110	; (5)
+	byte	#%00111100
+	byte	#%01100110
+	byte	#%01000010
+	byte	#%01110110
+	byte	#%01111100
+	byte	#%01000000
+	byte	#%01100110
+	byte	#%00111100	; (6)
+	byte	#%00110000
+	byte	#%00110000
+	byte	#%00110000
+	byte	#%00011000
+	byte	#%00001100
+	byte	#%00000110
+	byte	#%01110110
+	byte	#%01111110	; (7)
+	byte	#%00111100
+	byte	#%01000110
+	byte	#%01100010
+	byte	#%00011100
+	byte	#%00111000
+	byte	#%01000110
+	byte	#%01100010
+	byte	#%00111100	; (8)
+	byte	#%00111100
+	byte	#%01100110
+	byte	#%00000010
+	byte	#%00000110
+	byte	#%00111110
+	byte	#%01000110
+	byte	#%01100010
+	byte	#%00111100	; (9)
 
 ###End-Bank5
 
@@ -13214,16 +14422,16 @@ bank8_ClearSCRAM
 	INY
 	BPL 	bank8_ClearSCRAM
 
-**	lda	#>(EnterScreenBank1-1)
-	lda	#>(EnterScreenBank2-1)
+	lda	#>(EnterScreenBank1-1)
+**	lda	#>(EnterScreenBank2-1)
    	pha
-**   	lda	#<(EnterScreenBank1-1)
-   	lda	#<(EnterScreenBank2-1)
+   	lda	#<(EnterScreenBank1-1)
+**   	lda	#<(EnterScreenBank2-1)
    	pha
    	pha
    	pha
-**  	ldx	#1
-   	ldx	#2 
+  	ldx	#1
+**   	ldx	#2 
   	jmp	bankSwitchJump
 
 	saveFreeBytes
