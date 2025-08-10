@@ -181,6 +181,18 @@ SaveHighScore = $B7
 *	0-6: Counter
 *	  7: SaveBit
 *
+SpellPicture = $B8
+*
+*	0-3: Counter
+*	4-7: Index
+*
+LongCounter = $B9
+*
+*	0-5: Counter
+*	  6: Fire is Hold
+*	  7: Fire must be pressed
+*
+
 
 Eiki_Height = 23
 Eiki_HeightPlus1 = 24
@@ -190,7 +202,7 @@ StickColor = $30
 *
 *	For Testing: Normal Mode with default lives and bombs.
 *
-	LDA	#$32
+	LDA	#$74
 	STA	LivesAndBombs
 	LDA	#%01000000
 	STA	eikiY
@@ -292,6 +304,33 @@ OverScanBank1
 * begins.
 *
 
+	LDA	SpellPicture
+	AND	#$0F
+	CMP	#0
+	BEQ	Bank1_NoSpellPictureDisplayed
+
+	LDA	counter
+	AND	#1
+	CMP	#1
+	BNE	Bank1_NoSpellPictureDEC
+
+	LDA	SpellPicture
+	AND	#$0F
+	CMP	#%00000111
+	BNE	Bank1_SpellPicNotAtHalf
+
+	LDA	LongCounter
+	CMP	#0
+	BEQ	Bank1_SpellPicProgress
+	DEC	LongCounter
+	JMP	Bank1_NoSpellPictureDEC
+Bank1_SpellPicNotAtHalf
+Bank1_SpellPicProgress
+	DEC	SpellPicture
+Bank1_NoSpellPictureDEC
+	JMP	Bank1_WasSpellPicture
+	
+Bank1_NoSpellPictureDisplayed
 	LDA	#$00
 	STA	eikiBackColor
 
@@ -388,6 +427,26 @@ Bank1_NoTempInv
 	LDA	eikiSettings2
 	AND	#%11001111
 	STA	eikiSettings2
+*
+*	Display Eiki Picture For 15 (?) frames
+*
+	LDA	#$0F
+	STA	SpellPicture
+
+	LDA	#%01100000
+	STA	temp18
+	LDA	#255
+	STA	temp19
+
+	JSR	Bank1_SoundPlayer
+
+	LDA	#$88
+	STA	temp18
+
+	JSR	Bank1_SoundPlayer
+	
+	LDA	#%00010111
+	STA	LongCounter
 
 	JMP	Bank1_EikiDeadOrSpell
 
@@ -795,8 +854,8 @@ Bank1_SaveTempsLoop
 	STA	Score_5
 	
 	LDA	Score_4
-***	ADC	#0
-	ADC	#$50
+	ADC	#0
+***	ADC	#$50
 	STA	Score_4	
 
 	LDA	Score_3
@@ -830,6 +889,7 @@ Bank1_NoSoundChange
 
 	CLD
 Bank1_DontAdd1Point
+Bank1_WasSpellPicture
 
 *VSYNC
 *----------------------------7
@@ -1008,7 +1068,16 @@ VBlankEndBank1
 *
 
 	JSR	Bank1_TestLines
-****	JMP 	Bank1_Main_Ended
+
+	LDA	SpellPicture
+	AND	#$0F
+	CMP	#0
+	BEQ	Bank1_Eiki_Field
+**	LDA	#%00000001
+**	STA	SpellPicture
+
+	JSR	Bank1_DisplaySpellCardFace
+	JMP	Bank1_Main_Ended
 
 Bank1_Eiki_Field
 
@@ -1176,8 +1245,6 @@ Bank1_setFine
 	STA	temp07
 	LDA	Eiki_Sprite_Color_Pointers_P1+1,x
 	STA	temp08				; 16 
-
-
 
 *
 *	The kernel has basically 3 parts:
@@ -1454,6 +1521,12 @@ Bank1_ResetThings
 	STA	PF2
 	STA	GRP0
 	STA	GRP1
+
+	LDX	#2
+Bank1_Waste_To_Be_Sync
+	STA	WSYNC
+	DEX
+	BPL 	Bank1_Waste_To_Be_Sync
 
 *	LDA	#$1E
 *	STA	WSYNC
@@ -2430,7 +2503,7 @@ Eiki_Color_Spell_P0
 *
 *	AUDC0 / AUDC1
 *
-	_align  5
+	_align  9
 Bank1_SoundChannels
 	BYTE	#14
 	BYTE	#3
@@ -2440,10 +2513,11 @@ Bank1_SoundChannels
 	BYTE	#12
 	BYTE	#4
 	BYTE	#1
+	BYTE	#4
 *
 *	Must be between 1-15
 *
-	_align 	5
+	_align 	9
 Bank1_Durations
 	BYTE	#6
 	BYTE	#10
@@ -2453,10 +2527,11 @@ Bank1_Durations
 	BYTE	#10
 	BYTE	#10
 	BYTE	#13
+	BYTE	#14
 *
 *	This os the first freq played. Cannot reach above 15.
 *
-	_align	5
+	_align	9
 Bank1_StartFreqs
 	BYTE	#4
 	BYTE	#6
@@ -2466,6 +2541,7 @@ Bank1_StartFreqs
 	BYTE	#15
 	BYTE	#15
 	BYTE	#14
+	BYTE	#14
 *
 *	Low  Nibble: Small counter for one note.
 *	High Nibble: Behaviour of the freq:
@@ -2474,7 +2550,7 @@ Bank1_StartFreqs
 *		     2: DEC (higher the voice)	
 *		     3: Vibratio	
 *
-	_align	5
+	_align	9
 Bank1_EffectSettings
 	BYTE	#$12
 	BYTE	#$33
@@ -2484,6 +2560,7 @@ Bank1_EffectSettings
 	BYTE	#$32
 	BYTE	#$32
 	BYTE	#$23
+	BYTE	#$25
 
 	_align	2
 Bank1_FreqAdder
@@ -3098,6 +3175,12 @@ Bank1_CheckForPoints
 	lda	#>(Bank5_CheckForPoints-1)
    	pha
    	lda	#<(Bank5_CheckForPoints-1)
+   	jmp	Bank1_JMPto5
+	
+Bank1_DisplaySpellCardFace
+	lda	#>(Bank5_DisplaySpellCardFace-1)
+   	pha
+   	lda	#<(Bank5_DisplaySpellCardFace-1)
    	jmp	Bank1_JMPto5
 	
 
@@ -13130,9 +13213,253 @@ Bank5_NoSetHighScoreUpdate
 Bank5_DontCheckOnHighScore
 	JMP	Bank5_ReturnFromAnything
 
+
+Bank5_DisplaySpellCardFace
+
+	LDA	SpellPicture	
+	AND	#$F0
+	ASL
+	TAX
+
+	LDA	Bank5_SpellCard_Col_0,x
+	STA	temp01
+	LDA	Bank5_SpellCard_Col_0+1,x
+	STA	temp02
+
+	LDA	Bank5_SpellCard_Col_1,x
+	STA	temp03
+	LDA	Bank5_SpellCard_Col_1+1,x
+	STA	temp04
+
+	LDA	Bank5_SpellCard_Col_2,x
+	STA	temp05
+	LDA	Bank5_SpellCard_Col_2+1,x
+	STA	temp06
+
+	LDA	Bank5_SpellCard_Col_3,x
+	STA	temp07
+	LDA	Bank5_SpellCard_Col_3+1,x
+	STA	temp08
+
+	LDA	Bank5_SpellCard_Col_4,x
+	STA	temp09
+	LDA	Bank5_SpellCard_Col_4+1,x
+	STA	temp10
+
+	LDA	Bank5_SpellCard_Col_5,x
+	STA	temp11
+	LDA	Bank5_SpellCard_Col_5+1,x
+	STA	temp12
+
+	LDA	Bank5_SpellCard_Col_6,x
+	STA	temp13
+	LDA	Bank5_SpellCard_Col_6+1,x
+	STA	temp14
+
+	LDA	Bank5_SpellCard_Col_7,x
+	STA	temp15
+	LDA	Bank5_SpellCard_Col_7+1,x
+	STA	temp16			
+
+
+**	LDA	#0
+**	STA	ENAM0
+**	STA	ENAM1
+
+	LDA	SpellPicture
+	AND	#$0F
+	TAX	
+	LDA	Bank5_SpellCard_BG,x
+	STA	WSYNC
+	STA	COLUBK			; 3 
+	LDA	Bank5_SpellCard_FG,x	; 5 (8)
+	STA	COLUP0			; 3 (11)
+	STA	COLUP1			; 3 (14)
+	STA	HMCLR			; 3 (17)
+
+	LDA	#$02
+	STA	NUSIZ0	
+	STA	NUSIZ1
+
+	sleep	5
+
+	LDA	counter
+
+	STA	RESP0
+*	BYTE	#$8D
+*	BYTE	#RESP0
+*	BYTE	#0
+	sleep	3
+	STA	RESP1
+
+
+	AND	#1
+	TAX
+	LDY	#39
+
+	LDA	Bank5_SpellCard_First_HMOVE_P0,x
+	STA	HMP0
+	LDA	Bank5_SpellCard_First_HMOVE_P1,x
+	STA	HMP1
+
+***	TSX	
+***	STX	temp17
+
+	STA	WSYNC
+	STA	HMOVE		; 3
+	
+	CPX	#1		; 2 (5) 
+	BNE	Bank5_SpellCardPicture_Even	; 2 (7)
+	JMP	Bank5_SpellCardPicture_Odd	; 3 (10)
+
+	align	256
+Bank5_SpellCardPicture_Even
+	LDA	#$80
+	STA	HMP0
+	STA	HMP1
+
+Bank5_SpellCardPicture_Even_Loop
+	STA	WSYNC
+	STA	HMOVE			; 3
+
+***	LDA	#255
+***	STA	GRP0
+***	STA	GRP1			; 8 (11)
+
+	LDA	(temp03),y		; 5 (7)
+	STA	GRP0			; 3 (10)
+
+	LDA	(temp07),y		; 5 (15)
+	STA	GRP1			; 3 (18)
+
+	LAX	(temp15),y		; 5 (23)
+	LDA	(temp11),y		; 5 (28)
+
+	sleep	15
+
+	STA	GRP0			; 3 (46)
+	STX	GRP1			; 3 (49)
+
+	sleep	13
+
+	LDA	#0
+	STA	HMP0
+	STA	HMP1			; 8
+
+Bank5_SpellCardPicture_Even_SecondLine	
+	STA	HMOVE 			; 3 (74)
+
+	LDA	(temp01),y		; 5 (3)
+	STA	GRP0			; 3 (6)
+
+	LDA	(temp05),y		; 5 (11)
+	STA	GRP1			; 3 (14)	
+
+	LAX	(temp13),y		; 5 (19)
+	LDA	(temp09),y		; 5 (24)
+	
+	sleep	20
+
+	STA	GRP0			; 3 (43)
+	STX	GRP1			; 3 (46)
+
+	LDA	#$80
+	STA	HMP0
+	STA	HMP1			; 8		
+
+	DEY
+	BPL	Bank5_SpellCardPicture_Even_Loop
+	JMP	Bank5_SpellCardPicture_Ended
+
+	align	256
+Bank5_SpellCardPicture_Odd
+	LDA	#0
+	STA	HMP0
+	STA	HMP1	; 8 (18)
+	
+	sleep	65
+Bank5_SpellCardPicture_Odd_Loop
+	STA	HMOVE 	(74)
+
+***	LDA	#255
+***	STA	GRP0
+***	STA	GRP1			
+
+	LDA	(temp01),y		; 5 (3)
+	STA	GRP0			; 3 (6)
+
+	LDA	(temp05),y		; 5 (11)
+	STA	GRP1			; 3 (14)	
+
+	LAX	(temp13),y		; 5 (19)
+	LDA	(temp09),y		; 5 (24)
+	
+	sleep	20
+
+	STA	GRP0			; 3 (43)
+	STX	GRP1			; 3 (46)
+
+	LDA	#$80
+	STA	HMP0
+	STA	HMP1
+
+Bank5_SpellCardPicture_Odd_SecondLine
+	STA	WSYNC
+	STA	HMOVE		; 3
+
+	LDA	(temp03),y		; 5 (8)
+	STA	GRP0			; 3 (11)
+
+	LDA	(temp07),y		; 5 (16)
+	STA	GRP1			; 3 (19)
+
+	LAX	(temp15),y		; 5 (24)
+	LDA	(temp11),y		; 5 (29)
+
+	sleep	15
+
+	STA	GRP0			; 3 (46)
+	STX	GRP1			; 3 (49)
+
+	sleep	6
+	
+	LDA	#$00
+	STA	HMP0
+	STA	HMP1		; 8 (11)
+
+	DEY					; 2 (69)
+	BPL	Bank5_SpellCardPicture_Odd_Loop	; 2 (71)
+
+
+Bank5_SpellCardPicture_Ended
+	LDA	#0
+	STA	WSYNC
+	STA	COLUBK
+	STA	GRP0
+	STA	GRP1
+	STA	HMCLR
+
+***	LDX	temp17
+***	TXS
+
+	JMP	Bank5_ReturnFromAnything
+
+
+
 *
 *	Data Section
 *
+
+	_align	2
+Bank5_SpellCard_First_HMOVE_P0
+	BYTE	#$C0
+	BYTE	#$C0	
+
+	_align	2
+Bank5_SpellCard_First_HMOVE_P1
+	BYTE	#$E0
+	BYTE	#$E0	
+
 	_align	10
 
 Bank5_Return_JumpTable
@@ -13693,6 +14020,7 @@ Bank5_Numbers
 	_align	16
 
 Bank5_VicaVersa	
+Bank5_SpellCard_FG
 	BYTE	#$00
 	BYTE	#$02
 	BYTE	#$04
@@ -13709,6 +14037,409 @@ Bank5_VicaVersa
 	BYTE	#$04
 	BYTE	#$02
 	BYTE	#$00
+
+	_align	16
+Bank5_SpellCard_BG
+	BYTE	#$0E
+	BYTE	#$0C
+	BYTE	#$0A
+	BYTE	#$08
+	BYTE	#$06
+	BYTE	#$04
+	BYTE	#$02
+	BYTE	#$00
+	BYTE	#$00
+	BYTE	#$02
+	BYTE	#$04
+	BYTE	#$06
+	BYTE	#$08
+	BYTE	#$0A
+	BYTE	#$0C
+	BYTE	#$0E
+
+	_align	2
+Bank5_SpellCard_Col_0
+	BYTE	#<Bank5_Eiki64px_00
+	BYTE	#>Bank5_Eiki64px_00
+
+	_align	2
+Bank5_SpellCard_Col_1
+	BYTE	#<Bank5_Eiki64px_01
+	BYTE	#>Bank5_Eiki64px_01
+
+	_align	2
+Bank5_SpellCard_Col_2
+	BYTE	#<Bank5_Eiki64px_02
+	BYTE	#>Bank5_Eiki64px_02
+
+	_align	2
+Bank5_SpellCard_Col_3
+	BYTE	#<Bank5_Eiki64px_03
+	BYTE	#>Bank5_Eiki64px_03
+
+	_align	2
+Bank5_SpellCard_Col_4
+	BYTE	#<Bank5_Eiki64px_04
+	BYTE	#>Bank5_Eiki64px_04
+
+	_align	2
+Bank5_SpellCard_Col_5
+	BYTE	#<Bank5_Eiki64px_05
+	BYTE	#>Bank5_Eiki64px_05
+
+	_align	2
+Bank5_SpellCard_Col_6
+	BYTE	#<Bank5_Eiki64px_06
+	BYTE	#>Bank5_Eiki64px_06
+
+	_align	2
+Bank5_SpellCard_Col_7
+	BYTE	#<Bank5_Eiki64px_07
+	BYTE	#>Bank5_Eiki64px_07
+
+	_align	40
+Bank5_Eiki64px_00
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000	
+
+	_align	40
+Bank5_Eiki64px_01
+	BYTE	#%00000011
+	BYTE	#%00000011
+	BYTE	#%00000010
+	BYTE	#%00000110
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000011
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+
+	_align	40
+Bank5_Eiki64px_02
+	BYTE	#%10000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000011
+	BYTE	#%00111111
+	BYTE	#%01011110
+	BYTE	#%00111111
+	BYTE	#%11101010
+	BYTE	#%11110001
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000110
+	BYTE	#%00001100
+	BYTE	#%00011000
+	BYTE	#%00110000
+	BYTE	#%00100000
+	BYTE	#%01100000
+	BYTE	#%01101100
+	BYTE	#%11101100
+	BYTE	#%01101000
+	BYTE	#%01111110
+	BYTE	#%01101110
+	BYTE	#%00110110
+	BYTE	#%00110111
+	BYTE	#%00011111
+	BYTE	#%00000111
+	BYTE	#%00000000
+	BYTE	#%00000011
+	BYTE	#%00000001
+	BYTE	#%00000001
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000001
+	BYTE	#%00000000	
+
+	_align	40
+Bank5_Eiki64px_03
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%01000000
+	BYTE	#%10100000
+	BYTE	#%00000000
+	BYTE	#%11010000
+	BYTE	#%11010000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000001
+	BYTE	#%00000011
+	BYTE	#%00000000
+	BYTE	#%00000011
+	BYTE	#%01000111
+	BYTE	#%00001110
+	BYTE	#%00011111
+	BYTE	#%00111111
+	BYTE	#%00111101
+	BYTE	#%00011000
+	BYTE	#%00011010
+	BYTE	#%00001010
+	BYTE	#%01000111
+	BYTE	#%01001000
+	BYTE	#%01110000
+	BYTE	#%00110111
+	BYTE	#%00000000
+	BYTE	#%11001110
+	BYTE	#%11011110
+	BYTE	#%10000001
+	BYTE	#%11110000
+	BYTE	#%01111111
+	BYTE	#%10111111
+	BYTE	#%00000011
+	BYTE	#%01000011
+	BYTE	#%00000001
+	BYTE	#%00000000
+	BYTE	#%00000000	
+
+	_align	40
+Bank5_Eiki64px_04
+	BYTE	#%11010101
+	BYTE	#%00001010
+	BYTE	#%00100101
+	BYTE	#%00110000
+	BYTE	#%00000000
+	BYTE	#%11100000
+	BYTE	#%11000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%11000000
+	BYTE	#%11000000
+	BYTE	#%11111000
+	BYTE	#%11110000
+	BYTE	#%11111000
+	BYTE	#%11111110
+	BYTE	#%11001111
+	BYTE	#%11111111
+	BYTE	#%11101111
+	BYTE	#%11101101
+	BYTE	#%11111000
+	BYTE	#%11111000
+	BYTE	#%11111010
+	BYTE	#%11101110
+	BYTE	#%00101000
+	BYTE	#%01111001
+	BYTE	#%11111111
+	BYTE	#%11111100
+	BYTE	#%11100000
+	BYTE	#%00001001
+	BYTE	#%01111101
+	BYTE	#%00000000
+	BYTE	#%00000001
+	BYTE	#%00011111
+	BYTE	#%01111010
+	BYTE	#%10101110
+	BYTE	#%11111100
+	BYTE	#%01110100
+	BYTE	#%11101100
+	BYTE	#%00110000	
+
+	_align	40
+Bank5_Eiki64px_05
+	BYTE	#%11100000
+	BYTE	#%11000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000001
+	BYTE	#%10000100
+	BYTE	#%01000011
+	BYTE	#%00001111
+	BYTE	#%00111110
+	BYTE	#%01000000
+	BYTE	#%00000100
+	BYTE	#%00000101
+	BYTE	#%00000101
+	BYTE	#%00001111
+	BYTE	#%00011100
+	BYTE	#%00010000
+	BYTE	#%00010010
+	BYTE	#%00010110
+	BYTE	#%10000100
+	BYTE	#%10000000
+	BYTE	#%11000001
+	BYTE	#%10000000
+	BYTE	#%10100100
+	BYTE	#%10111100
+	BYTE	#%01111100
+	BYTE	#%11111100
+	BYTE	#%11011100
+	BYTE	#%00000001
+	BYTE	#%00100110
+	BYTE	#%11000000
+	BYTE	#%00000000
+	BYTE	#%00111110
+	BYTE	#%11111110
+	BYTE	#%11011100
+	BYTE	#%00000100
+	BYTE	#%10000010
+	BYTE	#%00000001
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%01100000	
+
+	_align	40
+Bank5_Eiki64px_06
+	BYTE	#%00111000
+	BYTE	#%00110000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%10000001
+	BYTE	#%00000011
+	BYTE	#%10001111
+	BYTE	#%00111000
+	BYTE	#%01100000
+	BYTE	#%11100000
+	BYTE	#%11000000
+	BYTE	#%10000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%11001100
+	BYTE	#%01010100
+	BYTE	#%01001100
+	BYTE	#%01111100
+	BYTE	#%01110000
+	BYTE	#%01100000
+	BYTE	#%11100000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%10000000
+	BYTE	#%00000000
+	BYTE	#%00000000	
+
+	_align	40
+Bank5_Eiki64px_07
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%01110000
+	BYTE	#%11110000
+	BYTE	#%11100000
+	BYTE	#%10000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000
+	BYTE	#%00000000	
 
 ###End-Bank5
 
@@ -15052,16 +15783,16 @@ bank8_ClearSCRAM
 	INY
 	BPL 	bank8_ClearSCRAM
 
-**	lda	#>(EnterScreenBank1-1)
-	lda	#>(EnterScreenBank2-1)
+	lda	#>(EnterScreenBank1-1)
+**	lda	#>(EnterScreenBank2-1)
    	pha
-**   	lda	#<(EnterScreenBank1-1)
-   	lda	#<(EnterScreenBank2-1)
+   	lda	#<(EnterScreenBank1-1)
+**   	lda	#<(EnterScreenBank2-1)
    	pha
    	pha
    	pha
-**  	ldx	#1
-   	ldx	#2 
+ 	ldx	#1
+**   	ldx	#2 
   	jmp	bankSwitchJump
 
 	saveFreeBytes
