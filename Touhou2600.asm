@@ -137,13 +137,14 @@ eikiX = $AE
 *	0-6: X position
 *	7  : Direction
 *
-eikiY = $AF
+eikiY = $B6
 *	
 *	0-3: Y Position
 *	  4: No More Lives Flag
-*	5-7: Free
+*	  5: FREE 
+*	6-7: Difficulty
 *
-eikiSettings = $B0
+eikiSettings = $AF
 *	0-1: 3 counter
 *	2-3: Color Index
 *	
@@ -152,28 +153,33 @@ eikiSettings = $B0
 *	6: Spell
 *	7: Dead
 *
-eikiSettings2 = $B1
+eikiSettings2 = $B0
 *
 *	0-3: SpriteIndex
 *	4-5: CoolDown
 *	  6: Invincible flag 
 *	  7: DeathSoundFlag
 *
-DanmakuColor = $B2
-StickBuffer = $B3
-eikiBackColor = $B4
+DanmakuColor = $B1
+StickBuffer = $B2
+eikiBackColor = $B3
 
-ScoreColorAdder = $B5
+ScoreColorAdder = $B4
 *
 *	0-2: Amplitude
 *	3-5: Free
 *	6-7: BombsSpriteBuffer
 *
-IndicatorSettings = $B6
+IndicatorSettings = $B5
 *
 *	0-2: LivesSpriteCounter
 * 	3-5: BombSpriteCounter
 *	6-7: LivesSpriteBuffer
+*
+SaveHighScore = $B7
+*
+*	0-6: Counter
+*	  7: SaveBit
 *
 
 Eiki_Height = 23
@@ -181,13 +187,20 @@ Eiki_HeightPlus1 = 24
 NumberOfLines = 35
 StickColor = $30
 
+*
+*	For Testing: Normal Mode with default lives and bombs.
+*
 	LDA	#$32
 	STA	LivesAndBombs
+	LDA	#%01000000
+	STA	eikiY
 
 	LDA	#58
 	STA	eikiX
 
-	LDA	#5
+	LDA	eikiY
+	AND	#$F0
+	ORA	#5
 	STA	eikiY
 
 	LDA	#%01100000
@@ -512,6 +525,10 @@ Bank1_NoAttackPressed
 Bank1_JustAttacked
 Bank1_EikiNoSpell
 	LDA	eikiY
+	AND	#$F0
+	STA	temp01
+
+	LDA	eikiY
 	AND	#%00001111		
 	TAX
 	LDA	SWCHA
@@ -533,6 +550,7 @@ Bank1_NoIncY
 	SEC
 	SBC	#1
 Bank1_MovedHor
+	ORA	temp01
 	STA	eikiY
 Bank1_NotMovedHor
 
@@ -758,6 +776,13 @@ Bank1_Fill_PF_Ended
 	CMP	#%01111111
 	BNE	Bank1_DontAdd1Point
 
+	LDX	#5	
+Bank1_SaveTempsLoop
+	LDA	Score_1,x
+	STA	temp01,x
+	DEX	
+	BPL	Bank1_SaveTempsLoop
+
 	CLC
 	SED	
 
@@ -770,11 +795,13 @@ Bank1_Fill_PF_Ended
 	STA	Score_5
 	
 	LDA	Score_4
-	ADC	#0
+***	ADC	#0
+	ADC	#$50
 	STA	Score_4	
 
 	LDA	Score_3
 	ADC	#0
+***	ADC	#$03
 	STA	Score_3	
 
 	LDA	Score_2
@@ -784,6 +811,18 @@ Bank1_Fill_PF_Ended
 	LDA	Score_1
 	ADC	#0
 	STA	Score_1	
+
+	JSR	Bank1_CheckForPoints
+
+	LDA	temp18
+	CMP	#0
+	BEQ	Bank1_NoSoundChange
+
+	LDA	#255
+	STA	temp19
+	JSR	Bank1_SoundPlayer
+
+Bank1_NoSoundChange
 
 	LDA	ScoreColorAdder
 	ORA	#%00000111
@@ -892,11 +931,18 @@ Bank1_NotOverMax
 	SBC	#%00010000
 	STA	temp01
 
+	LDA	eikiY
+	ROL
+	ROL
+	ROL
+	AND	#%00000011
+	TAX
+
 	LDA	LivesAndBombs
 	AND	#$0F
-	CMP	#2
+	CMP	Bank1_BombsOnDeath,x
 	BCS	Bank1_DontAddBombs
-	LDA	#2
+	LDA	Bank1_BombsOnDeath,x
 Bank1_DontAddBombs
 	ORA	temp01
 	STA	LivesAndBombs
@@ -1551,7 +1597,7 @@ Bank1_VicaVersa
 	BYTE	#$02
 	BYTE	#$00
 
-	_align	6
+	_align	10
 
 Bank1_Return_JumpTable
 	BYTE	#>Bank1_Return-1
@@ -1560,6 +1606,10 @@ Bank1_Return_JumpTable
 	BYTE	#<Bank2_Return-1
 	BYTE	#>Bank3_Return-1
 	BYTE	#<Bank3_Return-1
+	BYTE	#0
+	BYTE	#0
+	BYTE	#>Bank5_Return-1
+	BYTE	#<Bank5_Return-1
 
 	_align	16
 Bank1_FineAdjustTable
@@ -2376,29 +2426,6 @@ Eiki_Color_Spell_P0
 	byte	#$8e
 	byte	#$1e
 
-	_align	19
-Tokens_Color_P0_1up
-	byte	#$72
-	byte	#$74
-	byte	#$76
-	byte	#$76
-	byte	#$74
-	byte	#$72
-Tokens_Color_P0_Bomb
-	byte	#$d4
-	byte	#$d6
-	byte	#$d8
-	byte	#$d8
-	byte	#$d6
-	byte	#$d4
-Tokens_Color_P0_Gold
-	byte	#$18
-	byte	#$1a
-	byte	#$1c
-	byte	#$1e
-	byte	#$1c
-	byte	#$1a
-	byte	#$18
 
 *
 *	AUDC0 / AUDC1
@@ -2410,6 +2437,9 @@ Bank1_SoundChannels
 	BYTE	#9
 	BYTE	#2
 	BYTE	#8
+	BYTE	#12
+	BYTE	#4
+	BYTE	#1
 *
 *	Must be between 1-15
 *
@@ -2420,6 +2450,9 @@ Bank1_Durations
 	BYTE	#4
 	BYTE	#8
 	BYTE	#7
+	BYTE	#10
+	BYTE	#10
+	BYTE	#13
 *
 *	This os the first freq played. Cannot reach above 15.
 *
@@ -2430,6 +2463,9 @@ Bank1_StartFreqs
 	BYTE	#7
 	BYTE	#3
 	BYTE	#3
+	BYTE	#15
+	BYTE	#15
+	BYTE	#14
 *
 *	Low  Nibble: Small counter for one note.
 *	High Nibble: Behaviour of the freq:
@@ -2445,11 +2481,21 @@ Bank1_EffectSettings
 	BYTE	#$21
 	BYTE	#$33
 	BYTE	#$23
+	BYTE	#$32
+	BYTE	#$32
+	BYTE	#$23
 
 	_align	2
 Bank1_FreqAdder
 	BYTE	#8
 	BYTE	#248
+
+	_align	4
+Bank1_BombsOnDeath
+	BYTE	#4
+	BYTE	#2
+	BYTE	#2
+	BYTE	#2
 
 *Routines Section 
 *----------------------------------
@@ -3022,83 +3068,38 @@ Bank1_TestLine1
 	RTS
 
 Bank1_DrawScore
-	LDA	#0
-	STA	temp19
-
 	lda	#>(Bank5_Display_Score-1)
    	pha
    	lda	#<(Bank5_Display_Score-1)
+Bank1_JMPto5
    	pha
    	pha
    	pha
    	ldx	#5
+
+	LDA	#0
+	STA	temp19
+
    	jmp	bankSwitchJump
 
 Bank1_LivesAndBombs
-	LDA	#0
-	STA	temp19
-
 	lda	#>(Bank5_ShowLivesAndBombs-1)
    	pha
    	lda	#<(Bank5_ShowLivesAndBombs-1)
-   	pha
-   	pha
-   	pha
-   	ldx	#5
-   	jmp	bankSwitchJump
+   	jmp	Bank1_JMPto5
 
 Bank1_SetIndicatorSprites
-	LDA	#0
-	STA	temp19
-
 	lda	#>(Bank5_SetIndicatorSprites-1)
    	pha
    	lda	#<(Bank5_SetIndicatorSprites-1)
+   	jmp	Bank1_JMPto5
+
+Bank1_CheckForPoints
+	lda	#>(Bank5_CheckForPoints-1)
    	pha
-   	pha
-   	pha
-   	ldx	#5
-   	jmp	bankSwitchJump
-
-
-*Bank1_Add1Point
-*
-*	temp01: Add 1x
-*	temp02: Add 100x
-*	temp03: Add 10000x
-*	temp04: Add 1000000x
-*	temp05: Add 100000000x
-*	temp06: Add 10000000000x
-*
-*	temp19: Return Bank-1
-*
-
-*	LDA	#0
-*	STA	temp19
-*
-*	STA	temp02
-*	STA	temp03
-*	STA	temp04
-*	STA	temp05
-*	STA	temp06
-*
-*	LDA	#1
-*	STA	temp01
-*
-*	lda	#>(Bank5_Add2Score-1)
-*  	pha
-* 	lda	#<(Bank5_Add2Score-1)
-*   	pha
-*   	pha
-*   	pha
-*   	ldx	#5
-
-**	LDA	#$FF
-**	STA	$F0
-
-*   	jmp	bankSwitchJump
-
-
+   	lda	#<(Bank5_CheckForPoints-1)
+   	jmp	Bank1_JMPto5
+	
 
 ###End-Bank1
 
@@ -3168,10 +3169,10 @@ EnterScreenBank2
 	LDA	#$00
 	STA	HScore_2
 
-	LDA	#$05
+	LDA	#$00
 	STA	HScore_3
 
-	LDA	#$00
+	LDA	#$10
 	STA	HScore_4
 
 	LDA	#$00
@@ -3211,6 +3212,12 @@ PressedDelay = $C8
 *	6th bit   : Checks if fire was hold at the beginning.
 *	5th bit   : Visible / Non-visible
 *	All others: counter
+Difficulty = $C9
+*
+*	0-1: Diffuculty (Easy, Normal, Hard, Lunatic)
+*	  6: Joy dir hold
+*	  7: First time (0 = First)
+*
 
 	LDX	#8
 Bank2InitScrollingColumns	
@@ -3237,6 +3244,23 @@ Bank2InitScrollingColumns
 	LDA	#%01000000
 Bank2_No_Joy0_Fire_Was_Pressed_At_Enter
 	STA	PressedDelay
+
+	LDA	#%01000000
+	BIT	SWCHA	
+	BPL	Bank2_Joy0DirHold
+	BVC	Bank2_Joy0DirHold
+	LDA	#0
+Bank2_Joy0DirHold
+	STA	temp01
+	LDA	Difficulty
+	ORA	temp01
+	STA	Difficulty
+	
+	BIT	Difficulty
+	BMI	Bank2_NotFirstTime
+	LDA	#%10000001
+	STA	Difficulty
+Bank2_NotFirstTime
 
 	JMP	WaitUntilOverScanTimerEndsBank2
 
@@ -3308,10 +3332,23 @@ JinJang_ColorR = $F0D6
 	BNE	Bank2_DontLeaveTheScreenYet
 
 *
-*	Give you two bombs and three lives.
+*	Give you starter bombs and three lives.
 *
-	LDA	#$32
+	CLC
+	
+	LDA	Difficulty
+	AND	#%00000011
+	TAX
+	ROR
+	ROR	
+	ROR
+	STA	eikiY
+
+	LDA	DifficultySettings_StartValues,x
 	STA	LivesAndBombs
+	
+	LDA	#0
+	STA	SaveHighScore
 
 *
 *	Reset level to 1.	
@@ -3505,11 +3542,57 @@ Bank2_Save_Pressed
 Bank2_No_Joy0_Fire_Was_Released_At_Overscan
 Bank2_Fire0WasOncePressed_During_Overscan
 
+	BIT	PressedDelay
+	BMI 	Bank2_NoUpperDiff
+
+	BIT	Difficulty
+	BVS	Bank2_Joy0StillHold
+
+	LDA	Difficulty
+	AND	#%00000011
+	TAX
+
+	BIT	SWCHA
+	BVS	Bank2_NoLowerDiff
+	CPX	#0
+	BEQ	Bank2_NoMoreToBeSelected
+
+	DEX
+	JMP	Bank2_SaveDiff
+Bank2_NoLowerDiff
+	BMI	Bank2_NoUpperDiff
+	CPX	#3
+	BEQ	Bank2_NoMoreToBeSelected
+
+	INX	
+Bank2_SaveDiff
+	TXA
+	ORA	#%11000000
+	STA	Difficulty
+
+	LDA	#$82
+	STA	temp18
+	JSR	Bank2_Call_SoundPlayer	
+
+Bank2_NoUpperDiff
+Bank2_Joy0StillHold
+Bank2_NoMoreToBeSelected
+
+	BIT	SWCHA
+	BPL	Bank2_Joy0StillHold2
+	BVC	Bank2_Joy0StillHold2
+	LDA	Difficulty
+	AND	#%10111111
+	STA	Difficulty
+
+Bank2_Joy0StillHold2	
+
 	LDX	#0
 	BIT	PressedDelay
 	BMI 	Bank2_NotPressedFireYet
 	INX
 Bank2_NotPressedFireYet
+
 	LDA	counter
 	AND 	Bank2_Press_Fire_Speed,x
 	CMP	Bank2_Press_Fire_Speed,x
@@ -3925,7 +4008,7 @@ Bank2_DrawLogo_Loop_Text_Ended
 	STA	GRP0
 	STA	GRP1
 
-	LDX	#4
+	LDX	#3
 Bank2_Blank_Lines2
 	STA	WSYNC
 	DEX
@@ -3973,7 +4056,7 @@ Bank2_Draw_ScrollingText_Ended
 	STA	temp19
 	JSR	Bank2_Incrementing_RainbowLine
 
-	LDX	#7
+	LDX	#4
 Bank2_Wasting_More_Lines
 	STA	WSYNC
 	DEX
@@ -4182,11 +4265,91 @@ Bank2_DText_Was_Flat
 
 	JSR	Bank2_Call_DynamicText
 
-	LDX	#7
-Bank2_Wasting_More_Lines2
+**	LDX	#7
+**Bank2_Wasting_More_Lines2
+**	STA	WSYNC
+**	DEX
+**	BPL	Bank2_Wasting_More_Lines2
+
+Bank2_DifficultySettings
+	LDA	Difficulty
+	AND	#%00000011
+	ASL
+	TAX
+	STX	temp17	
+	
+	LDA	DifficultySettings_0_Pointers,x
+	STA	temp01
+	LDA	DifficultySettings_0_Pointers+1,x
+	STA	temp02
+
+	LDA	DifficultySettings_1_Pointers,x
+	STA	temp03
+	LDA	DifficultySettings_1_Pointers+1,x
+	STA	temp04
+
+	LDA	DifficultySettings_2_Pointers,x
+	STA	temp05
+	LDA	DifficultySettings_2_Pointers+1,x
+	STA	temp06
+
+	LDA	DifficultySettings_3_Pointers,x
+	STA	temp07
+	LDA	DifficultySettings_3_Pointers+1,x
+	STA	temp08
+
+	LDA	DifficultySettings_4_Pointers,x
+	STA	temp09
+	LDA	DifficultySettings_4_Pointers+1,x
+	STA	temp10
+
+	LDA	DifficultySettings_5_Pointers,x
+	STA	temp11
+	LDA	DifficultySettings_5_Pointers+1,x
+	STA	temp12
+
 	STA	WSYNC
-	DEX
-	BPL	Bank2_Wasting_More_Lines2
+	sleep	3
+
+	LDA	#<DifficultySettings_FG_Colors
+	ADC	temp17
+	STA	temp13
+	LDA	#>DifficultySettings_FG_Colors
+	STA	temp14					
+
+	LDA	#<Bank2_Press_Fire_Colors_BG_Normal
+	STA	temp15
+	LDA	#>Bank2_Press_Fire_Colors_BG_Normal
+	STA	temp16					; 10 (18)
+
+	LDA	#$02			
+	STA	NUSIZ0			
+	LDA	#00
+	STA	NUSIZ1				; 10 (28)
+
+	STA	RESP0				; 3 (31)
+	sleep	3
+	STA	RESP1				; 3 (36)
+
+	LDA	#$E0
+	STA	HMP0
+	LDA	#$00
+	STA	HMP1
+	STA	WSYNC
+	STA	HMOVE
+
+	LDY	#4
+	LDA	#255
+	STA	temp19
+
+	STA	WSYNC
+	STA	HMOVE		; 3
+
+	LDA	#$00
+	STA	HMP0
+	STA	HMP1		; 8 (11)
+
+	JSR	Bank2_48px_Text_Routine
 
 Bank2_Press_Start_Text
 *
@@ -4200,10 +4363,10 @@ Bank2_Press_Start_Text
 *	temp15: BG     pointer
 *
 
-	LDA	#$02			
-	STA	NUSIZ0			
-	LDA	#00
-	STA	NUSIZ1			; 10
+*	LDA	#$02			
+*	STA	NUSIZ0			
+*	LDA	#00
+*	STA	NUSIZ1			; 10
 
 	LDA	PressedDelay
 	AND	#%00100000
@@ -5141,7 +5304,7 @@ Bank2_Dynamic_Text_Glow
 	BYTE	#$1A
 	BYTE	#$18	
 
-	_align	6
+	_align	10
 
 Bank2_Return_JumpTable
 	BYTE	#>Bank1_Return-1
@@ -5150,6 +5313,11 @@ Bank2_Return_JumpTable
 	BYTE	#<Bank2_Return-1
 	BYTE	#>Bank3_Return-1
 	BYTE	#<Bank3_Return-1
+	BYTE	#0
+	BYTE	#0
+	BYTE	#>Bank5_Return-1
+	BYTE	#<Bank5_Return-1
+
 
 	_align	5
 
@@ -5256,6 +5424,231 @@ Bank2_LevelNumberPointers
 	BYTE #<Bank2_Number6
 	BYTE #>Bank2_Number6
 
+	_align	8
+DifficultySettings_0_Pointers
+	BYTE	#<DifficultySettings_0_0
+	BYTE	#>DifficultySettings_0_0
+	BYTE	#<DifficultySettings_0_1
+	BYTE	#>DifficultySettings_0_1
+	BYTE	#<DifficultySettings_0_2
+	BYTE	#>DifficultySettings_0_2
+	BYTE	#<DifficultySettings_0_3
+	BYTE	#>DifficultySettings_0_3
+
+	_align	8
+DifficultySettings_1_Pointers
+	BYTE	#<DifficultySettings_1_0
+	BYTE	#>DifficultySettings_1_0
+	BYTE	#<DifficultySettings_1_1
+	BYTE	#>DifficultySettings_1_1
+	BYTE	#<DifficultySettings_1_2
+	BYTE	#>DifficultySettings_1_2
+	BYTE	#<DifficultySettings_1_3
+	BYTE	#>DifficultySettings_1_3
+
+	_align	8
+DifficultySettings_2_Pointers
+	BYTE	#<DifficultySettings_2_0
+	BYTE	#>DifficultySettings_2_0
+	BYTE	#<DifficultySettings_2_1
+	BYTE	#>DifficultySettings_2_1
+	BYTE	#<DifficultySettings_2_2
+	BYTE	#>DifficultySettings_2_2
+	BYTE	#<DifficultySettings_2_3
+	BYTE	#>DifficultySettings_2_3
+
+	_align	8
+DifficultySettings_3_Pointers
+	BYTE	#<DifficultySettings_3_0
+	BYTE	#>DifficultySettings_3_0
+	BYTE	#<DifficultySettings_3_1
+	BYTE	#>DifficultySettings_3_1
+	BYTE	#<DifficultySettings_3_2
+	BYTE	#>DifficultySettings_3_2
+	BYTE	#<DifficultySettings_3_3
+	BYTE	#>DifficultySettings_3_3
+
+	_align	8
+DifficultySettings_4_Pointers
+	BYTE	#<DifficultySettings_4_0
+	BYTE	#>DifficultySettings_4_0
+	BYTE	#<DifficultySettings_4_1
+	BYTE	#>DifficultySettings_4_1
+	BYTE	#<DifficultySettings_4_2
+	BYTE	#>DifficultySettings_4_2
+	BYTE	#<DifficultySettings_4_3
+	BYTE	#>DifficultySettings_4_3
+
+	_align	8
+DifficultySettings_5_Pointers
+	BYTE	#<DifficultySettings_5_0
+	BYTE	#>DifficultySettings_5_0
+	BYTE	#<DifficultySettings_5_1
+	BYTE	#>DifficultySettings_5_1
+	BYTE	#<DifficultySettings_5_2
+	BYTE	#>DifficultySettings_5_2
+	BYTE	#<DifficultySettings_5_3
+	BYTE	#>DifficultySettings_5_3
+
+	_align	5
+DifficultySettings_0_0
+DifficultySettings_1_2
+DifficultySettings_4_0
+DifficultySettings_4_2
+DifficultySettings_5_3
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+
+	_align	5
+DifficultySettings_0_1
+DifficultySettings_0_2
+DifficultySettings_0_3
+	BYTE	#%00000010
+	BYTE	#%00000110
+	BYTE	#%00001110
+	BYTE	#%00000110
+	BYTE	#%00000010
+
+	_align	5
+DifficultySettings_1_0
+	BYTE	#%00000011
+	BYTE	#%00000010
+	BYTE	#%00000011
+	BYTE	#%00000010
+	BYTE	#%00000011
+
+	_align	5
+DifficultySettings_1_1
+	BYTE	#%00100100
+	BYTE	#%00100101
+	BYTE	#%00101101
+	BYTE	#%00110101
+	BYTE	#%00100100
+
+	_align	5
+DifficultySettings_1_3
+	BYTE	#%00111001
+	BYTE	#%00100010
+	BYTE	#%00100010
+	BYTE	#%00100010
+	BYTE	#%00100010
+
+	_align	5
+DifficultySettings_2_0
+	BYTE	#%10101011
+	BYTE	#%00101000
+	BYTE	#%00111001
+	BYTE	#%00101010
+	BYTE	#%10010001
+
+	_align	5
+DifficultySettings_2_1
+	BYTE	#%11001010
+	BYTE	#%00101010
+	BYTE	#%00101100
+	BYTE	#%00101010
+	BYTE	#%11001100
+
+	_align	5
+DifficultySettings_2_2
+	BYTE	#%01010101
+	BYTE	#%01010101
+	BYTE	#%01110111
+	BYTE	#%01010101
+	BYTE	#%01010010
+
+	_align	5
+DifficultySettings_2_3
+	BYTE	#%00100101
+	BYTe	#%10100101
+	BYTE	#%10101101
+	BYTE	#%10110101
+	BYTE	#%10100100
+
+	_align	5
+DifficultySettings_3_0
+	BYTE	#%00010000
+	BYTE	#%10010000
+	BYTE	#%00010000
+	BYTE	#%00101000
+	BYTE	#%10101000
+
+	_align	5
+DifficultySettings_3_1
+	BYTE	#%10001010
+	BYTE	#%10001010
+	BYTE	#%10101011
+	BYTE	#%11011010
+	BYTE	#%10001001
+
+	_align	5
+DifficultySettings_3_2
+	BYTE	#%01010110
+	BYTE	#%01010101
+	BYTE	#%01100101
+	BYTE	#%01010101
+	BYTE	#%01100110
+
+	_align	5
+DifficultySettings_3_3
+	BYTE	#%01001001
+	BYTE	#%01001000
+	BYTE	#%11001000
+	BYTE	#%01001000
+	BYTE	#%10011101
+
+	_align	5
+DifficultySettings_4_1
+	BYTE	#%10111000
+	BYTE	#%10100000
+	BYTE	#%10100000
+	BYTE	#%10100000
+	BYTE	#%00100000
+
+	_align	5
+DifficultySettings_4_3
+	BYTE	#%11001100
+	BYTE	#%10010000
+	BYTE	#%10010000
+	BYTE	#%10010000	
+	BYTE	#%11001100
+
+	_align	5
+DifficultySettings_5_0
+DifficultySettings_5_1
+DifficultySettings_5_2
+	BYTE	#%01000000
+	BYTE	#%01100000
+	BYTE	#%01110000
+	BYTE	#%01100000
+	BYTE	#%01000000
+
+	_align	12
+DifficultySettings_FG_Colors
+DifficultySettings_FG_01
+	BYTE	#$1e
+	BYTE	#$1c
+DifficultySettings_FG_02
+	BYTE	#$1a	
+	BYTE	#$18
+DifficultySettings_FG_03
+	BYTE	#$3a
+	BYTE	#$38
+DifficultySettings_FG_04
+	BYTE	#$36
+	BYTE	#$48
+	BYTE	#$46
+	BYTE	#$44
+	BYTE	#$42
+
+DifficultySettings_StartValues
+	BYTE	#$74
+	BYTE	#$52
+	BYTE	#$32
+	BYTE	#$32
 
 *Routine Section
 *---------------------------------
@@ -5661,6 +6054,10 @@ SpriteCounter = $E0
 
 	LDA	#%10111100
 	STA	TextCounter
+
+	LDA	#$83
+	STA	temp18
+	JSR	Bank3_Call_SoundPlayer
 
 TextBuffer_W01 = $F000
 TextBuffer_W02 = $F001
@@ -12068,6 +12465,27 @@ Bank5_Display_Score
 	ADC 	#$18
 	STA	temp18
 
+	LDA	SaveHighScore
+	BPL	Bank5_NoHighScoreRainbow
+
+	AND	#%01111111
+	CMP	#0
+	BEQ	Bank5_NoHighScoreRainbow
+
+	LDA	counter
+	AND	#$F0
+	STA	temp01
+
+	LDA	counter
+	AND	#$0F
+	TAX
+	LDA	Bank5_VicaVersa,x	
+	ORA	temp01
+	STA	temp18
+	
+	DEC	SaveHighScore
+	JMP	Bank5_NoDecrementGlow
+Bank5_NoHighScoreRainbow
 	CPX	#0
 	BEQ	Bank5_NoDecrementGlow
 
@@ -12422,6 +12840,7 @@ Bank5_ReturnFromAnything
 	LDX	temp19
 	CPX	#255
 	BNE	Bank5_ReturnNoRTS
+Bank5_Return
 	RTS
 Bank5_ReturnNoRTS
 	TXA
@@ -12528,10 +12947,193 @@ Bank5_CallRandom
 	STA	random
 	rts
 
+Bank5_CheckForPoints
+*
+* X < Y
+* LDA	X	
+* CMP	Y
+* BCS   else 	 
+*
+* X <= Y
+*
+* LDA	Y
+* CMP	X
+* BCC	else
+*
+* X > Y 
+*
+* LDA	Y
+* CMP	X
+* BCS	else
+*
+* X >= Y
+*
+* LDA	X
+* CMP	Y
+* BCC 	else
+*
+
+*	LDA	temp01
+*	CMP	Score_1
+*	BCS	Bank5_NoAddNewLife1
+*	JMP	Bank5_AddNewLife
+*
+*Bank5_NoAddNewLife1
+
+*
+*	Add a new bomb for every 00 00 01 00 00 00 points (except the ones that gave you lives)
+*	Add a new life for every 00 00 10 00 00 00 points 
+*
+*	If bombs are full (9), add an extra life every time you would get a bomb.
+*	If lives are full (what a gamer!), you get an extra 00 00 05 00 00 00. 	
+*
+
+	SED
+
+	LDA	#0	
+	STA	temp18
+	
+	LDA	Score_3
+	SEC
+	SBC	temp03
+	STA	temp07
+
+	CMP	#0
+	BEQ	Bank5_NothingChanged
+
+	LDA	temp03
+	AND	#$F0
+	STA	temp12
+
+	LDA	Score_3
+	AND	#$F0
+	SEC
+	SBC	temp12
+	CMP	#0
+	BEQ	Bank5_AddExtraBomb
+	
+	LDA	LivesAndBombs
+	STA	temp09
+	AND	#$0F
+	STA	temp08
+
+	JMP	Bank5_AddExtraLife
+
+Bank5_AddExtraBomb
+	LDA	LivesAndBombs
+	STA	temp09
+	AND	#$0F
+	STA	temp08
+
+	LDA	temp07
+	AND	#$0F
+	CLC
+	ADC	temp08
+	CMP	#10
+	BCS	Bank5_BombsOverflow
+	AND	#$0F
+	STA	temp08
+
+	LDA	LivesAndBombs
+	AND	#$F0
+	STA	temp10
+
+	JMP	Bank5_AddBombsToVar
+Bank5_BombsOverflow
+	LDA	#$09
+	STA	temp08
+
+	LDA	#$10
+	JMP	Bank5_AddExtraLifeFix1
+Bank5_AddExtraLife		
+	LDA	temp07
+Bank5_AddExtraLifeFix1
+	CLC
+	ADC	LivesAndBombs
+	BCC	Bank5_NoLifeOverFlow
+
+	CLC
+	LDA	Score_3
+	ADC	#$05
+	STA	Score_3	
+
+	LDA	Score_2
+	ADC	#0
+	STA	Score_2	
+
+	LDA	Score_1
+	ADC	#0
+	STA	Score_1	
+
+	LDA	#$90
+Bank5_NoLifeOverFlow
+	AND	#$F0
+	STA	temp10
+Bank5_AddBombsToVar	
+	ORA	temp08
+	STA	LivesAndBombs
+
+Bank5_CheckIfIncrementedSomething
+	LDA	temp09
+	CMP	LivesAndBombs
+	BEQ	Bank5_NothingChanged
+
+	AND	#$F0
+	CMP	temp10
+	BEQ	Bank5_NewBombAnimation	
+
+	LDA	IndicatorSettings
+	AND	#%00111000
+	ORA	#%10000001
+	STA	IndicatorSettings
+
+	LDA	#$86
+	JMP	Bank5_WasLifeAnimation
+Bank5_NewBombAnimation	
+	LDA	ScoreColorAdder
+	AND	#%00111111
+	ORA	#%10000000	
+	STA	ScoreColorAdder
+
+	LDA	IndicatorSettings
+	AND	#%11000111
+	ORA	#%00001000
+	STA	IndicatorSettings
+
+	LDA	#$85
+Bank5_WasLifeAnimation
+	STA	temp18
+
+
+Bank5_NothingChanged
+	CLD
+
+	LDA	SaveHighScore
+	BMI	Bank5_DontCheckOnHighScore
+
+	LDX	#5
+Bank5_CheckOnHighScoreLoop
+	LDA	HScore_1,x
+	CMP	Score_1,x
+	BCS	Bank5_NoSetHighScoreUpdate
+	LDA	#255
+	STA	SaveHighScore
+
+	LDA	#$87
+	STA	temp18
+
+	JMP	Bank5_DontCheckOnHighScore
+Bank5_NoSetHighScoreUpdate
+	DEX
+	BPL	Bank5_CheckOnHighScoreLoop
+
+Bank5_DontCheckOnHighScore
+	JMP	Bank5_ReturnFromAnything
+
 *
 *	Data Section
 *
-	_align	6
+	_align	10
 
 Bank5_Return_JumpTable
 	BYTE	#>Bank1_Return-1
@@ -12540,6 +13142,10 @@ Bank5_Return_JumpTable
 	BYTE	#<Bank2_Return-1
 	BYTE	#>Bank3_Return-1
 	BYTE	#<Bank3_Return-1
+	BYTE	#0
+	BYTE	#0
+	BYTE	#>Bank5_Return-1
+	BYTE	#<Bank5_Return-1
 
 	_align	6
 Bank5_StarPointers
@@ -13083,6 +13689,26 @@ Bank5_Numbers
 	byte	#%01000110
 	byte	#%01100010
 	byte	#%00111100	; (9)
+
+	_align	16
+
+Bank5_VicaVersa	
+	BYTE	#$00
+	BYTE	#$02
+	BYTE	#$04
+	BYTE	#$06
+	BYTE	#$08
+	BYTE	#$0A
+	BYTE	#$0C
+	BYTE	#$0E
+	BYTE	#$0E
+	BYTE	#$0C
+	BYTE	#$0A
+	BYTE	#$08
+	BYTE	#$06
+	BYTE	#$04
+	BYTE	#$02
+	BYTE	#$00
 
 ###End-Bank5
 
@@ -13638,7 +14264,7 @@ Bank8_ReturnNoRTS
 
    	jmp	bankSwitchJump
 
-	_align	6
+	_align	10
 
 Bank8_Return_JumpTable
 	BYTE	#>Bank1_Return-1
@@ -13647,6 +14273,10 @@ Bank8_Return_JumpTable
 	BYTE	#<Bank2_Return-1
 	BYTE	#>Bank3_Return-1
 	BYTE	#<Bank3_Return-1
+	BYTE	#0
+	BYTE	#0
+	BYTE	#>Bank5_Return-1
+	BYTE	#<Bank5_Return-1
 
 		_align	52
 
@@ -14422,16 +15052,16 @@ bank8_ClearSCRAM
 	INY
 	BPL 	bank8_ClearSCRAM
 
-	lda	#>(EnterScreenBank1-1)
-**	lda	#>(EnterScreenBank2-1)
+**	lda	#>(EnterScreenBank1-1)
+	lda	#>(EnterScreenBank2-1)
    	pha
-   	lda	#<(EnterScreenBank1-1)
-**   	lda	#<(EnterScreenBank2-1)
+**   	lda	#<(EnterScreenBank1-1)
+   	lda	#<(EnterScreenBank2-1)
    	pha
    	pha
    	pha
-  	ldx	#1
-**   	ldx	#2 
+**  	ldx	#1
+   	ldx	#2 
   	jmp	bankSwitchJump
 
 	saveFreeBytes
