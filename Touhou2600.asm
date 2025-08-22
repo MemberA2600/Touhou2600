@@ -228,7 +228,11 @@ StickColor = $30
 	STA	eikiSettings
 	STA	StickBuffer
 	STA	IndicatorSettings
-	STA	ScoreColorAdder
+	STA	SaveHighScore
+	STA	LongCounter
+	STA	eikiSettings2
+	STA	SpellPicture
+	STA	eikiBackColor
 
 	LDA	#%01000000
 	STA	eikiSettings2
@@ -2373,9 +2377,6 @@ JinJang_ColorR = $F0D6
 	LDA	DifficultySettings_StartValues,x
 	STA	LivesAndBombs
 	
-	LDA	#0
-	STA	SaveHighScore
-
 *
 *	Reset level to 1.	
 *
@@ -12142,11 +12143,16 @@ Bank5_NothingChanged
 	CMP	#%00100000
 	BEQ	Bank5_AlreadyHadContinue
 
-	LDX	#5
+	LDX	#0
 Bank5_CheckOnHighScoreLoop
+	LDA	Score_1,x
+	CMP	HScore_1,x
+	BCC	Bank5_DontCheckOnHighScore
+
 	LDA	HScore_1,x
 	CMP	Score_1,x
 	BCS	Bank5_NoSetHighScoreUpdate
+
 	LDA	#255
 	STA	SaveHighScore
 
@@ -12155,8 +12161,9 @@ Bank5_CheckOnHighScoreLoop
 
 	JMP	Bank5_DontCheckOnHighScore
 Bank5_NoSetHighScoreUpdate
-	DEX
-	BPL	Bank5_CheckOnHighScoreLoop
+	INX
+	CPX	#6
+	BNE	Bank5_CheckOnHighScoreLoop
 
 Bank5_DontCheckOnHighScore
 Bank5_AlreadyHadContinue
