@@ -193,6 +193,13 @@ LongCounter = $B9
 *	  6: Any Button is Hold
 *	  7: Fire must be pressed
 *
+LandScape = $BA
+*
+*	0-2: Counter
+*	  3: Auto Increment 
+*	4-6: FREE
+*	  7: Danmaku Shot
+*
 
 
 Eiki_Height = 23
@@ -202,12 +209,19 @@ StickColor = $30
 
 *
 *	For Testing: Normal Mode with default lives and bombs.
-*
-*	LDA	#$02
-*	STA	LivesAndBombs
-*	LDA	#%01000000
-*	STA	eikiY
-*
+
+	LDA	#$52
+	STA	LivesAndBombs
+	LDA	#%01000000
+	STA	eikiY
+
+	LDA	LandScape
+	ORA	#%00001000	
+	STA	LandScape
+
+	LDA	eikiY
+	ORA	#%00100000
+	STA	eikiY
 *
 	LDA	#58
 	STA	eikiX
@@ -241,10 +255,12 @@ StickColor = $30
 	ORA	#%00000001
 	STA	LevelAndCharge
 
-	LDX	#NumberOfLines
-	DEX
-Bank1_Erase_PF_2
+	LDA	#NumberOfLines
+	LSR
+	TAX
+****	DEX
 	LDA	#0
+Bank1_Erase_PF_2
 	STA	Danmaku_Col_1W,x
 	STA	Danmaku_Col_2W,x
 	STA	Danmaku_Col_3W,x
@@ -252,6 +268,8 @@ Bank1_Erase_PF_2
 
 	DEX
 	BPL	Bank1_Erase_PF_2
+
+	JSR	Bank1_EraseAllDanmaku
 
 	LDA	#$0e
 	STA	DanmakuColor
@@ -267,6 +285,29 @@ Danmaku_Col_1R = $F096
 Danmaku_Col_2R = $F0A8
 Danmaku_Col_3R = $F0BA
 Danmaku_Col_4R = $F0CC
+
+*
+*	Next New: F05E / F0DE
+*
+
+Danmaku_NumW = $F05E
+Danmaku_NumR = $F0DE
+
+*
+*	We can have a max. of 8 danmakus.
+*
+MaxNumOfDanmaku = 8
+
+Danmaku_SettingsW = $F05F
+Danmaku_SettingsR = $F0DF
+
+Danmaku_PozW = $F067
+Danmaku_PozR = $F0E7
+
+*
+*	Next New: F06F / F0EF
+*
+
 
 	JMP	WaitUntilOverScanTimerEndsBank1
 
@@ -341,6 +382,12 @@ Bank1_NoSpellPictureDisplayed
 	STA	eikiBackColor
 
 	ASL	StickBuffer
+*
+*	Turn off Danmaku Shot Flag
+*
+	LDA	LandScape
+	AND	#%01111111
+	STA	LandScape
 
 	LDA	ScoreColorAdder
 	AND	#%00001000
@@ -603,6 +650,8 @@ Bank1_NoTempInv
 	LDA	#%00010111
 	STA	LongCounter
 
+	JSR	Bank1_EraseAllDanmaku
+
 	JMP	Bank1_EikiDeadOrSpell
 
 Bank1_CannotCastSpell
@@ -725,6 +774,8 @@ Bank1_EikiDeadOrSpell
 	LDA	eikiSettings
 	AND	#%10111111
 	STA	eikiSettings
+
+	JSR	Bank1_EraseAllDanmaku
 
 Bank1_DontStopSpell
 	LDA	LevelAndCharge
@@ -987,30 +1038,20 @@ Bank1_EikiColorPointer0
 
 Bank1_EikiGotSpritePointer
 
-	LDX	#NumberOfLines
-	DEX
+	LDA	#NumberOfLines
+	LSR
+	TAX
+***	DEX
 Bank1_Erase_PF
 	LDA	#0
 
-*****	LDA	TestPF_00,x
 	STA	Danmaku_Col_1W,x
-
-*****	LDA	TestPF_01,x
 	STA	Danmaku_Col_2W,x
-
-*****	LDA	TestPF_02,x
 	STA	Danmaku_Col_3W,x
-
-*****	LDA	TestPF_03,x
 	STA	Danmaku_Col_4W,x
 
 	DEX
 	BPL	Bank1_Erase_PF
-
-	LDX	#8
-	LDA	#%00100000
-	STA	Danmaku_Col_1W,x
-
 
 Bank1_Fill_PF_Ended
 
@@ -1122,6 +1163,25 @@ VBLANKBank1
 	STA	temp19
 	JSR	Bank1_SoundPlayer
 
+	LDA	LandScape
+	AND	#%00001000
+	CMP	#%00001000
+	BNE	Bank1_NoLandScapeStuff
+
+	LDA	counter
+	AND	#7
+	CMP	#7
+	BNE	Bank1_NoLandScapeStuff
+
+	LDA	LandScape
+	AND	#7
+	CLC
+	ADC	#1
+	AND	#7	
+	ORA	#%00001000
+	STA	LandScape
+Bank1_NoLandScapeStuff
+
 	LDA	eikiX			
 	AND	#%01111111
 	STA	temp11
@@ -1217,6 +1277,41 @@ Bank1_NoHitSound
 	JSR	Bank1_SetIndicatorSprites
 ****	JSR	Bank1_CallDummy
 Bank1_NoIndicatorSpriteUpdate
+
+	LDA	eikiSettings
+	AND	#%11000000
+	CMP	#0
+	BNE	Bank1_NoDanmakuHandleDeadOrSpell
+
+*	LDA	eikiY
+*	AND	#%11000000
+*	ROL
+*	ROL
+*	ROL
+*	TAY
+
+**	LDA	counter
+**	AND	Bank1_Danmaku_Speed_Delay,y
+**	CMP	Bank1_Danmaku_Speed_Delay,y
+**	BNE	Bank1_NoDanmakuHandleDeadOrSpell
+
+	JSR	Bank1_HandleDanmaku
+Bank1_NoDanmakuHandleDeadOrSpell
+*
+*	TestDanmakuThings
+*
+
+*	LDA	#$02
+*	BIT	SWCHB
+*	BNE	Bank1_NoDanmakuTestThisTime
+
+	LDA	counter
+	AND	#%00011111
+	CMP	#%00011111
+	BNE	Bank1_NoDanmakuTestThisTime
+
+	JSR	Bank1_TestDanmakuAdd
+Bank1_NoDanmakuTestThisTime
 
 *SkipIfNoGameSet - VBLANK
 *---------------------------------
@@ -1372,6 +1467,7 @@ Bank1_Main_Ended
 *	STA	WSYNC
 *	STA	COLUBK
 
+	JSR	Bank1_LandScape
 	JSR	Bank1_DrawScore
 	JSR	Bank1_LivesAndBombs
 
@@ -1420,7 +1516,7 @@ Bank1M1AddX
 	BYTE	#0
 	BYTE	#10
 
-	_align	10
+	_align	14
 
 Bank1_Return_JumpTable
 	BYTE	#>Bank1_Return-1
@@ -1433,7 +1529,10 @@ Bank1_Return_JumpTable
 	BYTE	#0
 	BYTE	#>Bank5_Return-1
 	BYTE	#<Bank5_Return-1
-
+	BYTE	#>Bank6_Return-1
+	BYTE	#<Bank6_Return-1
+	BYTE	#>Bank7_Return-1
+	BYTE	#<Bank7_Return-1
 *
 *	AUDC0 / AUDC1
 *
@@ -1514,6 +1613,13 @@ Bank1_BombsOnDeath
 	BYTE	#2
 	BYTE	#2
 	BYTE	#2
+
+**	_align	4
+**Bank1_Danmaku_Speed_Delay
+**	BYTE	#7
+**	BYTE	#3
+**	BYTE	#3
+**	BYTE	#1
 
 *Routines Section 
 *----------------------------------
@@ -2130,6 +2236,55 @@ Bank1_DisplayDeathScreen
    	lda	#<(Bank5_DisplayDeathScreen-1)
    	jmp	Bank1_JMPto5
 		
+Bank1_LandScape
+	lda	#>(Bank6_LandScape-1)
+   	pha
+   	lda	#<(Bank6_LandScape-1)
+Bank1_JMPto6
+   	pha
+   	pha
+   	pha
+   	ldx	#6
+
+	LDA	#0
+	STA	temp19
+
+   	jmp	bankSwitchJump
+
+Bank1_HandleDanmaku
+	lda	#>(Bank7_HandleDanmaku-1)
+   	pha
+   	lda	#<(Bank7_HandleDanmaku-1)
+Bank1_JMPto7
+   	pha
+   	pha
+   	pha
+   	ldx	#7
+
+	LDA	#0
+	STA	temp19
+
+   	jmp	bankSwitchJump
+
+Bank1_TestDanmakuAdd
+	lda	#>(Bank7_TestDanmakuAdd-1)
+   	pha
+   	lda	#<(Bank7_TestDanmakuAdd-1)
+	JMP	Bank1_JMPto7
+
+Bank1_EraseAllDanmaku
+	LDA	#0
+	STA	Danmaku_NumW
+
+	LDX	#MaxNumOfDanmaku
+	DEX
+Bank1_Erase_Danmakus
+	STA	Danmaku_SettingsW,x
+	STA	Danmaku_PozW,x
+	DEX
+	BPL	Bank1_Erase_Danmakus
+
+	RTS
 
 ###End-Bank1
 
@@ -4331,7 +4486,7 @@ Bank2_Dynamic_Text_Glow
 	BYTE	#$1A
 	BYTE	#$18	
 
-	_align	10
+	_align	14
 
 Bank2_Return_JumpTable
 	BYTE	#>Bank1_Return-1
@@ -4344,7 +4499,10 @@ Bank2_Return_JumpTable
 	BYTE	#0
 	BYTE	#>Bank5_Return-1
 	BYTE	#<Bank5_Return-1
-
+	BYTE	#>Bank6_Return-1
+	BYTE	#<Bank6_Return-1
+	BYTE	#>Bank7_Return-1
+	BYTE	#<Bank7_Return-1
 
 	_align	5
 
@@ -12985,7 +13143,7 @@ Bank5_Continue_First_HMOVE_P1
 	BYTE	#$D0
 	BYTE	#$D0	
 
-	_align	10
+	_align	14
 
 Bank5_Return_JumpTable
 	BYTE	#>Bank1_Return-1
@@ -12998,6 +13156,10 @@ Bank5_Return_JumpTable
 	BYTE	#0
 	BYTE	#>Bank5_Return-1
 	BYTE	#<Bank5_Return-1
+	BYTE	#>Bank6_Return-1
+	BYTE	#<Bank6_Return-1
+	BYTE	#>Bank7_Return-1
+	BYTE	#<Bank7_Return-1
 
 	_align	6
 Bank5_StarPointers
@@ -14205,7 +14367,157 @@ start_bank5
 	Bank 6
 	fill	256
 ###Start-Bank6
+
+LandScape_Lines = 4
+
+Bank6_LandScape
+	LDA	#$F0
+	STA	PF0
+
+	LDA	#$00
+	STA	COLUPF
+
+	LDA	#%00000101
+	STA	CTRLPF
+
+	LDA	#LandScape_Lines
+	STA	temp01
+
+	LDA 	LevelAndCharge
+	AND	#%11000000
+	ROL
+	ROL
+	ROL
+	TAX
+	LDA	Bank6_LandScape_BaseColor,x
+	STA	temp02
+
+	LDA	LandScape
+	AND	#%00000111
+	CLC
+	ADC	#LandScape_Lines
+	TAX
+
+Bank6_LandScape_Loop
+	LDA	Bank6_LandScape_Amplitude,x
+	CLC
+	ADC	temp02
+	STA	temp03
+
+*	LDY	temp01
+*	LDA	Bank6_LandScape_Playfield_Mask,y
+*	STA	temp04
+
+	LDA	#5
+	SEC
+	SBC	temp01
+	TAY
+	DEY
+
+Bank6_LandScape_SubLoop
+	STA	WSYNC
+
+*	LDA	temp04
+*	STA	PF1
 	
+	LDA	temp03
+	STA	COLUBK
+	
+	DEY
+	BPL	Bank6_LandScape_SubLoop
+
+	DEX
+	DEC	temp01
+	BPL	Bank6_LandScape_Loop
+
+Bank6_LandScape_Ended
+	LDA	#0
+	STA	WSYNC
+	STA	PF2
+	STA	COLUBK
+
+Bank6_ReturnFromAnything
+	LDX	temp19
+	CPX	#255
+	BNE	Bank6_ReturnNoRTS
+Bank6_Return
+	RTS
+Bank6_ReturnNoRTS
+	TXA
+	INX
+
+	TAY
+
+	ASL		
+	TAY
+
+	LDA	Bank6_Return_JumpTable,y
+   	pha
+   	lda	Bank6_Return_JumpTable+1,y
+   	pha
+   	pha
+   	pha
+
+   	jmp	bankSwitchJump
+
+Bank6_Return
+	RTS
+
+*
+*	Data Section
+*
+	_align	6
+*Bank6_LandScape_Playfield_Mask
+*	BYTE	#%00000000
+*	BYTE	#%10000000
+*	BYTE	#%11000000
+*	BYTE	#%11100000
+*	BYTE	#%11110000
+*	BYTE	#%11111000
+
+	_align	6
+Bank6_LandScape_BaseColor
+	BYTE	#$40
+	BYTE	#$D0
+	BYTE	#$D0
+	BYTE	#$D0
+	BYTE	#$D0
+	BYTE	#$D0
+
+	_align	12
+Bank6_LandScape_Amplitude
+	BYTE	#$02
+	BYTE	#$04
+	BYTE	#$06
+	BYTE	#$08
+
+	BYTE	#$06
+	BYTE	#$08
+	BYTE	#$06
+	BYTE	#$04
+
+	BYTE	#$02
+	BYTE	#$04
+	BYTE	#$06
+	BYTE	#$08
+
+	_align	14
+
+Bank6_Return_JumpTable
+	BYTE	#>Bank1_Return-1
+	BYTE	#<Bank1_Return-1
+	BYTE	#>Bank2_Return-1
+	BYTE	#<Bank2_Return-1
+	BYTE	#>Bank3_Return-1
+	BYTE	#<Bank3_Return-1
+	BYTE	#0
+	BYTE	#0
+	BYTE	#>Bank5_Return-1
+	BYTE	#<Bank5_Return-1
+	BYTE	#>Bank6_Return-1
+	BYTE	#<Bank6_Return-1
+	BYTE	#>Bank7_Return-1
+	BYTE	#<Bank7_Return-1
 
 ###End-Bank6
 
@@ -14249,11 +14561,514 @@ start_bank6
 	Bank 7
 	fill	256
 ###Start-Bank7
+*
+*	We can have a max. number of danmaku of 8 on screen, depending on
+*	the difficulty.
+*	Every type of danmaku have a cost value. 
+*	You can have at least one danmaku on screen, even if
+*	it has a larger value than the limit, but by the second one,
+*	the sum shouldn't exceed the limit.
+*
+*	We can only add one danmaku in a frame.
+*
+*	Each danmaku is stored on two bytes on SARA:
+*
+*	Danmaku_Settings:
+*	-----------------
+*	0-3: Danmaku Y (0-16)
+*	4-7: Danmaku Type (we can have 15 types)
+*
+*	Danmaku_Poz:
+*	------------
+*	0-4: Danmaku X (0-32)
+*	5-7: Danmaku Extra Settings
+*
+*	X or Y settings are sometimes controllers for a type.
+*
+*	Danmaku_SettingsW 
+*	Danmaku_SettingsR 
+*
+*	Danmaku_PozW 
+*	Danmaku_PozR 
+*
+*	Danmaku	Type	#0:
+*	-------------------
+*	Empty, nothing, really.
+*
+*	Danmaku Type	#1:
+*	--------------------
+*	A single danmaku block that move to a constant direction.
+*	This is the most common one, used by most enemies.
+*
+*	Can be used for falling shoots or Cirno's Perfect Freeze.
+*
+*	X and Y positions are used as they should.
+*	Danmaku Extra Settings are used for direction.
+*
+*	0: Up
+*	1: Up / Right
+*	2: Right
+*	3: Down / Right
+*	4: Down
+*	5: Down / Left
+*	6: Left
+*	7: Up / Left	
+*
+
+Bank7_TestDanmakuAdd
 	
+	LDA	#$1F
+	STA	temp01
+
+	JSR	Bank7_CallRandom
+	AND	#%00011111
+
+	STA	temp02
+
+	JSR	Bank7_Fall_On_Eiki
+
+	ORA	temp02
+	STA	temp02
+
+	JMP	Bank7_AddDanmaku
+*
+*	Input: temp01, temp02
+*
+Bank7_Follow_Eiki
+
+
+
+*
+*	Input: temp02
+*
+Bank7_Fall_On_Eiki
+	LDA	eikiX
+	AND	#%01111111
+	STA	temp03
+
+	LDA 	temp02
+	ASL
+	ASL
+	SEC
+	SBC	#8
+	SEC
+	SBC	temp03
+
+	CLC
+	ADC	#8
+	BPL	Bank7_Follow_Eiki_Not_Right
+
+	LDA	#$60
+	RTS
+Bank7_Follow_Eiki_Not_Right	
+	CMP	#8
+	BCS	Bank7_Follow_Eiki_Not_Down
+
+	LDA	#$80
+	RTS
+Bank7_Follow_Eiki_Not_Down
+	LDA	#$A0
+	RTS
+
+Bank7_EikiX_To_PFx
+	LDA	eikiX
+	AND	#%01111111
+	CLC	
+	ADC	#8
+
+	LSR
+	LSR
+
+	RTS
+
+*
+*	temp01 and temp02 contains the exact data!
+*
+*
+Bank7_AddDanmaku
+	BIT	LandScape
+
+	BPL	Bank7_TheVeryFirstOnFrame
+	JMP	Bank7_ReturnFromAnything
+
+Bank7_TheVeryFirstOnFrame
+*
+* X <= Y
+*
+* LDA	Y
+* CMP	X
+* BCC	else
+*
+
+	LDA	temp01
+	AND	#$F0
+	LSR
+	LSR
+	LSR
+	LSR
+	TAY
+
+	LDA	Bank7_Danmaku_Value,y
+	TAY
+
+	LDA	Danmaku_NumR
+	CMP	#0
+	BEQ	Bank7_FirstDanmaku
+
+	TYA
+	CLC
+	ADC	Danmaku_NumR
+	STA	temp17
+
+	LDA	eikiY
+	AND	#%11000000
+	ROL
+	ROL
+	ROL
+	TAY
+
+	LDA	Bank7_Max_Number_Of_Danmaku,y
+	CMP	temp17
+***	BCC	Bank7_AddDanmakuRTS
+	BCS	Bank7_NoMaxNumExceeded	
+	JMP	Bank7_ReturnFromAnything
+Bank7_NoMaxNumExceeded		
+	LDA	temp17
+	JMP	Bank7_SaveDanmakuNum
+Bank7_FirstDanmaku
+	TYA
+Bank7_SaveDanmakuNum
+	STA	Danmaku_NumW
+
+	LDX	#0
+Bank7_AddDanmakuToMemory
+	LDA	Danmaku_SettingsR,x
+	AND	#$F0
+	CMP	#0
+	BEQ	Bank7_FoundEmptyOne
+	INX
+	CPX	#8
+	BNE	Bank7_AddDanmakuToMemory
+	JMP	Bank7_ReturnFromAnything
+
+Bank7_FoundEmptyOne
+	LDA	temp01
+	STA	Danmaku_SettingsW,x
+
+	LDA	temp02
+	STA	Danmaku_PozW,x	
+
+	LDA	LandScape
+	ORA	#%10000000	
+	STA	LandScape
+	JMP	Bank7_ReturnFromAnything
+
+Bank7_HandleDanmaku
+
+	LDX	#255
+
+Bank7_HandleNextOne
+	INX
+	CPX	#8
+	BNE	Bank7_StillHaveSomeLeft
+	JMP	Bank7_ReturnFromAnything
+Bank7_StillHaveSomeLeft
+
+	LDA	Danmaku_SettingsR,x
+	AND	#$F0
+	CMP	#0
+	BEQ	Bank7_HandleNextOne
+
+	CMP	#$10
+	BEQ	Bank7_DanmakuType1
+
+	JMP	Bank7_HandleNextOne
+
+Bank7_DanmakuType1
+	CLC
+	LDA	eikiY
+	AND	#%11000000
+	ROL
+	ROL
+	ROL
+	TAY
+
+
+	LDA	counter
+	AND	Bank7_Danmaku_Speed_Delay,y
+	CMP	Bank7_Danmaku_Speed_Delay,y
+	BEQ	Bank7_DoNoJustDrawIt
+
+	LDA	Danmaku_SettingsR,x
+	AND	#$0F
+	STA	temp08
+
+	LDA	Danmaku_PozR,x
+	AND	#%00011111
+	STA	temp09
+
+	JMP	Bank7_JustDrawIt
+Bank7_DoNoJustDrawIt
+
+	LDA	Danmaku_PozR,x
+	AND	#%11100000
+
+	LSR
+	LSR
+	LSR
+	LSR
+	LSR
+
+	TAY
+ 
+	LDA	Bank7_DanmakuType1_MoveX,y
+	STA	temp01
+
+	LDA	Bank7_DanmakuType1_MoveY,y
+	STA	temp02
+
+	LDA	Danmaku_SettingsR,x
+	AND	#$F0
+	STA	temp03
+
+	LDA	Danmaku_PozR,x
+	AND	#%11100000
+	STA	temp04
+
+	LDA	Danmaku_SettingsR,x
+	AND	#$0F
+	CLC
+	ADC	temp02
+	BMI	Bank7_RemoveDanmaku
+	CMP	#16	
+	BEQ	Bank7_RemoveDanmaku
+	STA	temp08
+
+	ORA	temp03
+	STA	Danmaku_SettingsW,x	
+
+	LDA	Danmaku_PozR,x
+	AND	#%00011111
+	CLC
+	ADC	temp01
+	BMI	Bank7_RemoveDanmaku
+	CMP	#32	
+	BEQ	Bank7_RemoveDanmaku
+	STA	temp09
+
+	ORA	temp04
+	STA	Danmaku_PozW,x	
+
+Bank7_JustDrawIt
+	JSR	Bank7_DisplayDanmakuPixel
+	JMP	Bank7_HandleNextOne
+
+Bank7_RemoveDanmaku
+
+	LDA	#0
+	STA	Danmaku_SettingsW,x
+	STA	Danmaku_PozW,x
+
+	LDA	Danmaku_NumR
+	SEC
+	SBC	#1
+	STA	Danmaku_NumW
+
+	JMP	Bank7_HandleNextOne
+*
+*	Inputs: temp08: Y, temp09: X
+*	Indicator X should not be used!
+*
+Bank7_DisplayDanmakuPixel
+* X <= Y
+*
+* LDA	Y
+* CMP	X
+* BCC	else
+
+	LDY	#0
+	LDA	temp09
+Bank7_GetColumnLoop
+	CMP	#8
+	BCC	Bank7_DisplayDanmakuPixelGotX
+
+	INY
+
+	SEC
+	SBC	#8
+	JMP	Bank7_GetColumnLoop
+
+Bank7_DisplayDanmakuPixelGotX
+	STA	temp02
+	STY	temp05
+		
+	TYA
+	AND	#1
+	ASL
+	TAY
+
+	LDA	Bank7_DanmakuPixelORA_Pointers,y
+	STA	temp03
+	LDA	Bank7_DanmakuPixelORA_Pointers+1,y
+	STA	temp04	
+
+	LDY	temp05
+	LDA	Bank7_MultiBy18,y
+	CLC
+	ADC	temp08
+	ADC	#2	
+	TAY
+	STA	temp01
+
+	LDY	temp02
+	LDA	(temp03),y
+	
+	LDY	temp01
+	ORA	Danmaku_Col_1R,y
+	STA	Danmaku_Col_1W,y
+
+	RTS
+
+Bank7_ReturnFromAnything
+	LDX	temp19
+	CPX	#255
+	BNE	Bank7_ReturnNoRTS
+Bank7_Return
+	RTS
+Bank7_ReturnNoRTS
+	TXA
+	INX
+
+	TAY
+
+	ASL		
+	TAY
+
+	LDA	Bank7_Return_JumpTable,y
+   	pha
+   	lda	Bank7_Return_JumpTable+1,y
+   	pha
+   	pha
+   	pha
+
+   	jmp	bankSwitchJump
+
+Bank7_CallRandom
+	LDA	random
+	lsr
+	BCC 	*+4
+	EOR	#$d4
+	STA	random
+	rts
+
+*
+*	Data Section
+*
+
+	_align	4
+Bank7_Danmaku_Speed_Delay
+	BYTE	#7
+	BYTE	#3
+	BYTE	#3
+	BYTE	#1
+
+	_align	4
+Bank7_DanmakuPixelORA_Pointers
+	BYTE 	#<Bank7_DanmakuPixelORA1
+	BYTE 	#>Bank7_DanmakuPixelORA1
+	BYTE 	#<Bank7_DanmakuPixelORA2
+	BYTE 	#>Bank7_DanmakuPixelORA2
+
+	_align	8
+Bank7_DanmakuPixelORA1
+	BYTE	#%10000000
+	BYTE	#%01000000
+	BYTE	#%00100000
+	BYTE	#%00010000
+	BYTE	#%00001000
+	BYTE	#%00000100
+	BYTE	#%00000010
+	BYTE	#%00000001
+
+	_align	8
+Bank7_DanmakuPixelORA2
+	BYTE	#%00000001
+	BYTE	#%00000010
+	BYTE	#%00000100
+	BYTE	#%00001000
+	BYTE	#%00010000
+	BYTE	#%00100000
+	BYTE	#%01000000
+	BYTE	#%10000000
+	
+	_align	4
+Bank7_MultiBy18
+	BYTE	#0
+	BYTE	#18
+	BYTE	#36
+	BYTE	#54
+
+
+	_align	4
+Bank7_DanmakuCol_LowBytes
+	BYTE	#<Danmaku_Col_1W
+	BYTE	#<Danmaku_Col_2W
+	BYTE	#<Danmaku_Col_3W
+	BYTE	#<Danmaku_Col_4W
+
+	_align	8
+Bank7_DanmakuType1_MoveX
+	BYTE	#0
+	BYTE	#1
+	BYTE	#1
+	BYTE	#1
+	BYTE	#0
+	BYTE	#255
+	BYTE	#255
+	BYTE	#255
+	
+	_align	8
+Bank7_DanmakuType1_MoveY
+	BYTE	#1
+	BYTE	#1
+	BYTE	#0
+	BYTE	#255
+	BYTE	#255
+	BYTE	#255
+	BYTE	#0
+	BYTE	#1
+
+	_align	2
+Bank7_Danmaku_Value
+	BYTE	#0
+	BYTE	#1
+
+	_align	4
+Bank7_Max_Number_Of_Danmaku
+	BYTE	#4
+	BYTE	#5
+	BYTE	#6
+	BYTE	#8
+
+	_align	14
+
+Bank7_Return_JumpTable
+	BYTE	#>Bank1_Return-1
+	BYTE	#<Bank1_Return-1
+	BYTE	#>Bank2_Return-1
+	BYTE	#<Bank2_Return-1
+	BYTE	#>Bank3_Return-1
+	BYTE	#<Bank3_Return-1
+	BYTE	#0
+	BYTE	#0
+	BYTE	#>Bank5_Return-1
+	BYTE	#<Bank5_Return-1
+	BYTE	#>Bank6_Return-1
+	BYTE	#<Bank6_Return-1
+	BYTE	#>Bank7_Return-1
+	BYTE	#<Bank7_Return-1	
 
 ###End-Bank7
-*Routine Section
-	
 
 	saveFreeBytes
 	rewind 	7fd4
@@ -14718,7 +15533,7 @@ Bank8_ReturnNoRTS
 
    	jmp	bankSwitchJump
 
-	_align	10
+	_align	14
 
 Bank8_Return_JumpTable
 	BYTE	#>Bank1_Return-1
@@ -14731,6 +15546,10 @@ Bank8_Return_JumpTable
 	BYTE	#0
 	BYTE	#>Bank5_Return-1
 	BYTE	#<Bank5_Return-1
+	BYTE	#>Bank6_Return-1
+	BYTE	#<Bank6_Return-1
+	BYTE	#>Bank7_Return-1
+	BYTE	#<Bank7_Return-1
 
 		_align	52
 
@@ -16793,16 +17612,16 @@ bank8_ClearSCRAM
 	INY
 	BPL 	bank8_ClearSCRAM
 
-**	lda	#>(EnterScreenBank1-1)
-	lda	#>(EnterScreenBank2-1)
+	lda	#>(EnterScreenBank1-1)
+**	lda	#>(EnterScreenBank2-1)
    	pha
-**   	lda	#<(EnterScreenBank1-1)
-   	lda	#<(EnterScreenBank2-1)
+   	lda	#<(EnterScreenBank1-1)
+**   	lda	#<(EnterScreenBank2-1)
    	pha
    	pha
    	pha
-** 	ldx	#1
-   	ldx	#2 
+ 	ldx	#1
+**   	ldx	#2 
   	jmp	bankSwitchJump
 
 	saveFreeBytes
