@@ -14601,6 +14601,7 @@ start_bank6
 *	This is the most common one, used by most enemies.
 *
 *	Can be used for falling shoots or Cirno's Perfect Freeze.
+*	But basically good for any straight patterns.
 *
 *	X and Y positions are used as they should.
 *	Danmaku Extra Settings are used for direction.
@@ -14614,15 +14615,32 @@ start_bank6
 *	6: Left
 *	7: Up / Left	
 *
+*	Danmaku Type	#2:
+*	--------------------
+*	A single danmaku that follows you for a short time, and as the counter
+*	depletes, it turns into a danmaku type #1.
+*
+*	Can be used for harder-to-dodge all purpose shoots.
+*
+*
+*
+*
+*
 
 Bank7_TestDanmakuAdd
+
+	JSR	Bank7_CallRandom
+	AND	#%00000011
+	CMP	#%00000011
 	
+	BEQ	Bank7_TestAdd2
+	
+Bank7_TestAdd1
 	LDA	#$1F
 	STA	temp01
 
 	JSR	Bank7_CallRandom
 	AND	#%00011111
-
 	STA	temp02
 
 	JSR	Bank7_Fall_On_Eiki
@@ -14631,12 +14649,19 @@ Bank7_TestDanmakuAdd
 	STA	temp02
 
 	JMP	Bank7_AddDanmaku
-*
-*	Input: temp01, temp02
-*
-Bank7_Follow_Eiki
 
+Bank7_TestAdd2
+	JSR	Bank7_CallRandom
+	AND	#$0F
+	ORA	#$20
+	STA	temp01	
 
+	JSR	Bank7_CallRandom
+	AND	#%00011111
+	ORA	#%11100000
+	STA	temp02
+
+	JMP	Bank7_AddDanmaku
 
 *
 *	Input: temp02
@@ -14656,18 +14681,34 @@ Bank7_Fall_On_Eiki
 
 	CLC
 	ADC	#8
-	BPL	Bank7_Follow_Eiki_Not_Right
+	BPL	Bank7_Fall_On_Not_Right
 
 	LDA	#$60
 	RTS
-Bank7_Follow_Eiki_Not_Right	
+Bank7_Fall_On_Not_Right	
 	CMP	#8
-	BCS	Bank7_Follow_Eiki_Not_Down
+	BCS	Bank7_Fall_On_Not_Down
 
 	LDA	#$80
 	RTS
-Bank7_Follow_Eiki_Not_Down
+Bank7_Fall_On_Not_Down
 	LDA	#$A0
+	RTS
+
+Bank7_EikiY_To_PFy
+	LDA 	eikiY
+	AND	#$0F
+	STA	temp04
+
+	LDA	#NumberOfLines
+	SEC	
+	SBC	temp04
+
+	CLC
+	ADC	#HitBoxMinus
+	SEC
+	SBC	#21
+	LSR
 	RTS
 
 Bank7_EikiX_To_PFx
@@ -14782,6 +14823,11 @@ Bank7_StillHaveSomeLeft
 	CMP	#$10
 	BEQ	Bank7_DanmakuType1
 
+	CMP	#$20
+	BNE	Bank7_Not_DanmakuType2
+	JMP	Bank7_DanmakuType2
+
+Bank7_Not_DanmakuType2
 	JMP	Bank7_HandleNextOne
 
 Bank7_DanmakuType1
@@ -14799,6 +14845,7 @@ Bank7_DanmakuType1
 	CMP	Bank7_Danmaku_Speed_Delay,y
 	BEQ	Bank7_DoNoJustDrawIt
 
+Bank7_JustDrawItPrep
 	LDA	Danmaku_SettingsR,x
 	AND	#$0F
 	STA	temp08
@@ -14875,6 +14922,177 @@ Bank7_RemoveDanmaku
 	STA	Danmaku_NumW
 
 	JMP	Bank7_HandleNextOne
+
+Bank7_DanmakuType2
+	CLC
+	LDA	eikiY
+	AND	#%11000000
+	ROL
+	ROL
+	ROL
+	TAY
+
+	LDA	counter
+	AND	Bank7_Danmaku_Speed_Delay,y
+	CMP	Bank7_Danmaku_Speed_Delay,y
+	BEQ	Bank7_DoNoJustDrawIt_2
+	JMP	Bank7_JustDrawItPrep
+
+Bank7_DoNoJustDrawIt_2
+	LDA	eikiX
+	AND	#%01111111
+	STA	temp03
+
+	LDA 	Danmaku_PozR,x
+	AND	#%00011111
+	ASL
+	ASL
+	SEC
+	SBC	#8
+	SEC
+	SBC	temp03
+
+	CLC
+	ADC	#8
+	BPL	Bank7_Follow_Eiki_Not_Right
+
+	LDA	#1
+	JMP	Bank7_GotFollowerX
+Bank7_Follow_Eiki_Not_Right	
+	CMP	#8
+	BCS	Bank7_Follow_Eiki_Not_Zero
+	LDA	#0
+	JMP	Bank7_GotFollowerX
+Bank7_Follow_Eiki_Not_Zero
+	LDA	#255
+Bank7_GotFollowerX
+	STA	temp03
+
+	LDA 	eikiY
+	AND	#$0F
+	STA	temp04
+
+	LDA	#NumberOfLines
+	SEC	
+	SBC	temp04
+
+	CLC
+	ADC	#HitBoxMinus
+	SEC
+	SBC	#21
+	LSR
+
+	STA	temp04
+
+	LDA	Danmaku_SettingsR,x
+	AND	#$0F
+
+	SEC
+	SBC	temp04
+	CLC
+	ADC	#2
+
+	BPL	Bank7_Follow_Eiki_Not_Up
+	
+	LDA	#1
+	JMP	Bank7_Follow_Eiki_SetY
+
+Bank7_Follow_Eiki_Not_Up
+	CMP	#2
+	BCS	Bank7_Follow_Eiki_Not_Middle
+
+	LDA	#0
+	JMP	Bank7_Follow_Eiki_SetY
+
+Bank7_Follow_Eiki_Not_Middle
+	LDA	#255
+Bank7_Follow_Eiki_SetY
+	STA	temp04
+
+	LDA 	Danmaku_PozR,x
+	AND	#%11100000
+	STA	temp05
+	CMP	#0
+	BNE	Bank7_Follow_Eiki_Counter_Not_Depleted
+	
+	INC	temp03
+	INC	temp04
+
+	LDA	temp04
+	ASL
+	CLC
+	ADC	temp04
+	ADC	temp03
+	TAY
+
+	LDA	Bank7_Danmaku_Type2_Morph,y
+	CMP	#255
+	BNE	Bank7_NoRandomForDir
+
+	JSR	Bank7_CallRandom
+	AND	#%01110000
+Bank7_NoRandomForDir
+	ASL
+	STA	temp05
+
+	LDA	Danmaku_PozR,x
+	AND	#%00011111
+	ORA	temp05
+	STA	Danmaku_PozW,x
+
+	LDA	Danmaku_SettingsR,x
+	AND	#$0F
+	ORA	#$10
+	STA	Danmaku_SettingsW,x
+
+	LDA	Danmaku_NumR
+	SEC
+	SBC	#1
+	STA	Danmaku_NumW
+
+	JMP	Bank7_DanmakuType1
+
+Bank7_Follow_Eiki_Counter_Not_Depleted
+	LDA	Danmaku_SettingsR,x
+	AND	#$0F
+	STA	temp08
+	CLC
+	ADC	temp04
+	BMI	Bank7_Follow_Eiki_DontChangeY
+* X < Y
+* LDA	X	
+* CMP	Y
+* BCS   else 
+	CMP	#16
+	BCS	Bank7_Follow_Eiki_DontChangeY	
+	STA	temp08
+	ORA	#$20	
+	STA	Danmaku_SettingsW,x
+Bank7_Follow_Eiki_DontChangeY
+
+	LDA	Danmaku_PozR,x
+	AND	#%00011111
+	STA	temp09
+	CLC
+	ADC	temp03
+	
+	BMI	Bank7_Follow_Eiki_DontChangeX
+	CMP	#32
+	BCS	Bank7_Follow_Eiki_DontChangeX
+	STA	temp09	
+
+Bank7_Follow_Eiki_DontChangeX
+	LDA	temp05
+	SEC
+	SBC	#%00100000
+	STA	temp05
+
+	ORA	temp09
+	STA	Danmaku_PozW,x
+
+	JSR	Bank7_DisplayDanmakuPixel
+	JMP	Bank7_HandleNextOne
+
 *
 *	Inputs: temp08: Y, temp09: X
 *	Indicator X should not be used!
@@ -14965,6 +15183,20 @@ Bank7_CallRandom
 *	Data Section
 *
 
+	_align	9
+Bank7_Danmaku_Type2_Morph
+	BYTE	#$70
+	BYTE	#$00
+	BYTE	#$10
+
+	BYTE	#$60
+	BYTE	#$FF
+	BYTE	#$20
+	
+	BYTE	#$50
+	BYTE	#$40
+	BYTE	#$30
+
 	_align	4
 Bank7_Danmaku_Speed_Delay
 	BYTE	#7
@@ -15038,10 +15270,11 @@ Bank7_DanmakuType1_MoveY
 	BYTE	#0
 	BYTE	#1
 
-	_align	2
+	_align	3
 Bank7_Danmaku_Value
 	BYTE	#0
 	BYTE	#1
+	BYTE	#2
 
 	_align	4
 Bank7_Max_Number_Of_Danmaku
