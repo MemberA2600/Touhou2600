@@ -169,7 +169,8 @@ ScoreColorAdder = $B4
 *
 *	0-2: Amplitude
 *	  3: DeathScreen
-*	4-5: Free
+*	  4: Free
+*	  5: FreezeDanmaku Flag	
 *	6-7: BombsSpriteBuffer
 *
 IndicatorSettings = $B5
@@ -198,7 +199,8 @@ LandScape = $BA
 *
 *	0-2: Counter
 *	  3: Auto Increment 
-*	4-6: FREE
+*	4-5: Danmaku Sound
+*	  6: Free
 *	  7: Danmaku Shot
 *
 
@@ -1118,6 +1120,28 @@ Bank1_DontAdd1Point
 Bank1_WasSpellPicture
 Bank1_DisplayingDeathScreen
 
+	LDA	 LandScape
+	AND	 #%00110000
+	LSR
+	LSR
+	LSR
+	LSR
+	CMP	#0
+	BEQ	Bank1_NoDanmakuSound
+
+	TAY
+	LDA	Bank1_DanmakuSound,y
+	STA	temp18
+
+	LDA	#255
+	STA	temp19
+	JSR	Bank1_SoundPlayer
+
+	LDA	LandScape	
+	AND	#%11001111
+	STA	LandScape
+Bank1_NoDanmakuSound
+
 *VSYNC
 *----------------------------7
 * This is a fixed section in
@@ -1168,6 +1192,8 @@ VBLANKBank1
 	AND	#%00001000
 	CMP	#%00001000
 	BNE	Bank1_NoLandScapeStuff
+	BIT	eikiSettings
+	BMI	Bank1_NoLandScapeStuff
 
 	LDA	counter
 	AND	#7
@@ -1537,7 +1563,7 @@ Bank1_Return_JumpTable
 *
 *	AUDC0 / AUDC1
 *
-	_align  9
+	_align  10
 Bank1_SoundChannels
 	BYTE	#14
 	BYTE	#3
@@ -1548,10 +1574,11 @@ Bank1_SoundChannels
 	BYTE	#4
 	BYTE	#1
 	BYTE	#4
+	BYTE	#15
 *
 *	Must be between 1-15
 *
-	_align 	9
+	_align 	10
 Bank1_Durations
 	BYTE	#6
 	BYTE	#10
@@ -1562,10 +1589,11 @@ Bank1_Durations
 	BYTE	#10
 	BYTE	#13
 	BYTE	#14
+	BYTE	#3
 *
 *	This os the first freq played. Cannot reach above 15.
 *
-	_align	9
+	_align	10
 Bank1_StartFreqs
 	BYTE	#4
 	BYTE	#6
@@ -1576,6 +1604,7 @@ Bank1_StartFreqs
 	BYTE	#15
 	BYTE	#14
 	BYTE	#14
+	BYTE	#7
 *
 *	Low  Nibble: Small counter for one note.
 *	High Nibble: Behaviour of the freq:
@@ -1584,7 +1613,7 @@ Bank1_StartFreqs
 *		     2: DEC (higher the voice)	
 *		     3: Vibratio	
 *
-	_align	9
+	_align	10
 Bank1_EffectSettings
 	BYTE	#$12
 	BYTE	#$33
@@ -1595,6 +1624,7 @@ Bank1_EffectSettings
 	BYTE	#$32
 	BYTE	#$23
 	BYTE	#$25
+	BYTE	#$21
 
 	_align	2
 Bank1_FreqAdder
@@ -1614,6 +1644,11 @@ Bank1_BombsOnDeath
 	BYTE	#2
 	BYTE	#2
 	BYTE	#2
+
+	_align	2
+Bank1_DanmakuSound
+	BYTE	#$89
+	BYTE	#$89
 
 **	_align	4
 **Bank1_Danmaku_Speed_Delay
@@ -2286,6 +2321,7 @@ Bank1_Erase_Danmakus
 	BPL	Bank1_Erase_Danmakus
 
 	RTS
+
 
 ###End-Bank1
 
@@ -14750,6 +14786,9 @@ Bank7_TheVeryFirstOnFrame
 	LSR
 	TAY
 
+	LDA	Bank7_DanmakuSound,y
+	STA	temp03
+
 	LDA	Bank7_Danmaku_Value,y
 	TAY
 
@@ -14801,7 +14840,9 @@ Bank7_FoundEmptyOne
 	STA	Danmaku_PozW,x	
 
 	LDA	LandScape
+	AND	#%01001111
 	ORA	#%10000000	
+	ORA	temp03
 	STA	LandScape
 	JMP	Bank7_ReturnFromAnything
 
@@ -14840,6 +14881,10 @@ Bank7_DanmakuType1
 	ROL
 	TAY
 
+	LDA	ScoreColorAdder
+	AND	#%00100000
+	CMP	#%00100000
+	BEQ	Bank7_JustDrawItPrep
 
 	LDA	counter
 	AND	Bank7_Danmaku_Speed_Delay,y
@@ -14933,6 +14978,12 @@ Bank7_DanmakuType2
 	ROL
 	TAY
 
+	LDA	ScoreColorAdder
+	AND	#%00100000
+	CMP	#%00100000
+	BNE	Bank7_DanTyp2_CheckOnCounter
+	JMP	Bank7_JustDrawItPrep
+Bank7_DanTyp2_CheckOnCounter
 	LDA	counter
 	AND	Bank7_Danmaku_Speed_Delay,y
 	CMP	Bank7_Danmaku_Speed_Delay,y
@@ -15183,6 +15234,12 @@ Bank7_CallRandom
 *
 *	Data Section
 *
+
+	_align	3
+Bank7_DanmakuSound
+	BYTE	#0
+	BYTE	#%00010000
+	BYTE	#%00010000
 
 	_align	9
 Bank7_Danmaku_Type2_Morph
