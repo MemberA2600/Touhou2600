@@ -87,7 +87,7 @@ NTSC_Display  = 229
 
 PAL_Vblank   =	169
 PAL_Overscan =	206
-PAL_Display  =  244
+PAL_Display  =  245
 
 
 ***************************
@@ -212,24 +212,35 @@ MessagePointer = $BC
 NewLoadDelay = $BD
 *
 *	0-6: Counter
-*	  7: Free
+*	  7: Enemy is a boss
 *
 EnemyX = $BE 
-*
-*	0-6: X position
-*	  7: Boss type
-*
 
 *
 * Common Enemy Stuff
 *-------------------------------
 *
+* Since only one enemy is present at the time, 
+* we can use the same memory addresses.
+*
+*
 DeathX = $BF
-*	0-6: X position	
-*	  7: Free
 
+EnemySettings = $C0
+*
+* 	0-1: NUSIZ 
+*       2-7: Enemy Type
+*
+EnemyBackColor = $C1
+EnemySpritePointer = $C2
+EnemyColorPointer = $C4
 
-
+EnemySettings2 = $C6
+*
+*	0-2: Explosion Sprite Counter
+*	3-5: Free to use counter
+*	6-7: Free to use state
+* 
 
 Eiki_Height = 23
 Eiki_HeightPlus1 = 24
@@ -288,8 +299,13 @@ StickColor = $30
 	STA	SpellPicture
 	STA	eikiBackColor
 	STA	LevelPointer
-	STA	NewLoadDelay
 	STA	EnemyX
+	STA	DeathX 
+	STA	EnemySettings
+	STA	NewLoadDelay
+
+***	LDA	#5
+	STA	NewLoadDelay
 
 	LDA	LevelAndCharge
 	AND 	#%11100000
@@ -1240,7 +1256,7 @@ Bank1_MaybeDanmakuSound
 Bank1_NoDanmakuSound
 *
 *	No Next Load If:
-*	-The next loading flag is set
+*	-The hold next loading flag is set
 *	-A message is displayed
 *	-Deathscreen is displayed
 *	-Spellpicture is displayed
@@ -1248,6 +1264,7 @@ Bank1_NoDanmakuSound
 *         -The enemy is not a boss
 *         -The enemy is a boss and ignore flag is not set.
 *
+
 	BIT	LandScape
 	BVS	Bank1_NoNextEventLoad
 	
@@ -1260,10 +1277,10 @@ Bank1_NoDanmakuSound
 	BEQ	Bank1_NoNextEventLoad
 
 	LDA	EnemyX
-	AND	#%01111111
 	CMP	#0
 	BEQ	Bank1_Bank1NoEnemyPresent
-	BIT	EnemyX
+
+	BIT	NewLoadDelay
 	BPL	Bank1_NoNextEventLoad
 
 	BIT 	MessagePointer
@@ -1290,7 +1307,6 @@ Bank1_Bank1NoEnemyPresent
 	STA	NewLoadDelay
 
 	JMP	Bank1_NoNextEventLoad
-
 
 Bank1_Bank1DelayCounterIs0
 	JSR	Bank1_NextEvent
@@ -1343,12 +1359,74 @@ VBLANKBank1
 	STA	temp19
 	JSR	Bank1_SoundPlayer
 
+Bank1_EnemyStuff
+	BIT	MessagePointer
+	BMI	Bank1_MessageGameOverSpell
+
+	LDA	ScoreColorAdder
+	AND	#%00001000
+	CMP	#%00001000
+	BEQ	Bank1_MessageGameOverSpell
+
+	LDA	SpellPicture
+	AND	#$0F
+	CMP	#0
+	BNE	Bank1_MessageGameOverSpell
+
+	LDA	EnemyX
+	CMP	#0
+	BNE	Bank1_EnemyCurrent
+
+	LDA	#<Bank6_Enemy_Sprite_Empty
+	STA	EnemySpritePointer
+	LDA	#>Bank6_Enemy_Sprite_Empty
+	STA	EnemySpritePointer+1
+
+	JMP	Bank1_DoneEnemyStuff
+Bank1_EnemyCurrent
+	JSR	Bank1_HandTheEnemy
+Bank1_DoneEnemyStuff
+
+	LDA	DeathX
+	CMP	#0
+	BNE	Bank1_ThereIsBoom
+
+	LDA	EnemySettings2
+	ORA	#3
+	STA	EnemySettings2
+	JMP	Bank1_ThereWasNoBoom		
+
+Bank1_ThereIsBoom
+	LDA	EnemySettings2
+	AND	#%11111100
+	STA	temp01
+
+	LDA	EnemySettings2
+	AND	#3
+	CLC
+	ADC	#1	
+	TAX
+	ORA	temp01
+	STA	EnemySettings2
+	
+	CPY	#3
+	BNE	Bank1_DontSetXTo0	
+
+	LDA	#0
+	STA	DeathX
+
+Bank1_DontSetXTo0	
+Bank1_ThereWasNoBoom	
+Bank1_MessageGameOverSpell
+
 	LDA	LandScape
 	AND	#%00001000
 	CMP	#%00001000
 	BNE	Bank1_NoLandScapeStuff
+
 	BIT	eikiSettings
 	BMI	Bank1_NoLandScapeStuff
+
 	LDA	MessagePointer
 	BMI	Bank1_NoLandScapeStuff
 
@@ -1358,11 +1436,15 @@ VBLANKBank1
 	BNE	Bank1_NoLandScapeStuff
 
 	LDA	LandScape
+	AND	#%11111000
+	STA	temp01
+
+	LDA	LandScape
 	AND	#7
 	CLC
 	ADC	#1
 	AND	#7	
-	ORA	#%00001000
+	ORA	temp01
 	STA	LandScape
 Bank1_NoLandScapeStuff
 
@@ -1554,6 +1636,14 @@ VBlankEndBank1
 
 	JMP	Bank1_MoveOnWithMain
 Bank1_NoMessageDisplayed
+
+	BIT 	NewLoadDelay
+	BMI	Bank1_BossModeOn
+	JSR	Bank1_DrawCommonEnemies
+
+	JMP	Bank1_MoveOnWithMain
+Bank1_BossModeOn
+
 
 Bank1_MoveOnWithMain
 	JSR	Bank1_TestLines
@@ -2525,6 +2615,12 @@ Bank1_Display_Name
  	lda	#<(Bank6_Display_Name-1)
 	JMP	Bank1_JMPto6
 
+Bank1_HandTheEnemy
+	lda	#>(Bank7_HandTheEnemy-1)
+  	pha
+ 	lda	#<(Bank7_HandTheEnemy-1)
+	JMP	Bank1_JMPto7
+
 Bank1_Display_Message
 *
 *	temp19 = (number of bank) - 1 
@@ -2536,6 +2632,13 @@ Bank1_Display_Message
    	pha
    	lda	#<(Bank8_Display_Message-1)
 	JMP	Bank1_JMPto8
+
+Bank1_DrawCommonEnemies
+	lda	#>(Bank6_DrawCommonEnemies-1)
+  	pha
+ 	lda	#<(Bank6_DrawCommonEnemies-1)
+	JMP	Bank1_JMPto6
+
 
 ###End-Bank1
 
@@ -2909,7 +3012,7 @@ JinJang_Fill_SARA_Nope_2
 *	Text is based on mirrored playfield.
 *	So shifting bits to the left goes like this.
 *	Non-mirrored PF1 << Mirrored PF2 << Non-Mirrored PF2 << Mirrored PF1 << Buffer
-*	temp 19 is tud buffer.	
+*	temp19 is the buffer.	
 *
 *	
 
@@ -14850,9 +14953,138 @@ Bank6_Display_Name_Ended
 	STA	GRP1
 
 	JMP	Bank6_ReturnFromAnything
+
+Bank6_DrawCommonEnemies
+*
+*	The enemy should be player 1, so the explosion would overlap the sprites as P0.
+*
+*	temp03 - temp04: Death Sprite Pointers
+*
+
+	LDA	EnemySettings
+	AND	#3
+	STA	NUSIZ1
+
+	LDA	#0
+	STA	NUSIZ0
+
+	LDA	DeathX
+	STA	temp01
+
+	LDA	EnemyX
+	STA	temp02
+
+	LDA	#%00000101
+	STA	CTRLPF
+
+	LDA	EnemySettings2
+	AND	#3
+	ASL
+	TAX
+
+	LDA	Bank6_Death_Sprite_Pointers,x
+	STA	temp03
+
+	LDA	Bank6_Death_Sprite_Pointers+1,x
+	STA	temp04
+
+	LDX	#1
+Bank6_NextHorPoz
+	STA	WSYNC
+	LDA	temp01,x
+Bank6_DivideLoop
+	sbc	#15
+   	bcs	Bank6_DivideLoop
+   	sta	temp01,X
+   	sta	RESP0,X	
+	DEX
+	BPL	Bank6_NextHorPoz	
+
+	ldx	#1
+Bank6_setFine
+   	lda	temp01,x
+	CLC
+	ADC	#16
+	TAY
+   	lda	Bank6_FineAdjustTable,y
+   	sta	HMP0,x		
+	DEX
+	BPL	Bank6_setFine
+
+	STA	WSYNC
+	STA	HMOVE
+
+	LDY	#8
+	LDA	EnemyBackColor	
+
+Bank6_WasteSomeLoop
+	STA	WSYNC
+	STA	COLUPF
+	STA	COLUBK
+
+	DEY	
+	BPL	Bank6_WasteSomeLoop
+
+	LDA	#255
+	STA	PF0
+
+	LDY	#11
+	
+Bank6_Display_Common_Enemy_Loop
+	STA	WSYNC
+	
+	LDA	(EnemySpritePointer),y
+	STA	GRP1
+
+	LDA	(temp03),y
+	STA	GRP0
+
+	LDA	(EnemyColorPointer),y
+	STA	COLUP1
+	
+	LDA	Bank6_Common_Enemy_Death_Colors,y
+	STA	COLUP0
+
+	DEY
+	BPL	Bank6_Display_Common_Enemy_Loop
+
+Bank6_DrawCommonEnemies_Ended
+	LDA	#0
+	STA	WSYNC
+	STA	HMCLR
+	STA	PF0
+	STA	COLUBK
+	STA	COLUPF
+	STA	GRP0
+	STA	GRP1
+	STA	NUSIZ1
+	STA	NUSIZ0
+	STA	CTRLPF
+
+	JMP	Bank6_ReturnFromAnything
+
 *
 *	Data Section
 *
+
+	_align	16
+Bank6_FineAdjustTable
+	byte	#$80
+	byte	#$70
+	byte	#$60
+	byte	#$50
+	byte	#$40
+	byte	#$30
+	byte	#$20
+	byte	#$10
+	byte	#$00
+	byte	#$f0
+	byte	#$e0
+	byte	#$d0
+	byte	#$c0
+	byte	#$b0
+	byte	#$a0
+	byte	#$90
 
 	_align	8
 Bank6_Character_Text_BaseColor_Adders	
@@ -15159,6 +15391,7 @@ Bank6_Character_Names_Rumia_3
 Bank6_Character_Names_Reimu_3
 Bank6_Character_Names_Cirno_3
 Bank6_Enemy_Sprite_Empty
+Bank6_Common_Enemy_Death_3
 	BYTE	#%00000000
 	BYTE	#%00000000
 	BYTE	#%00000000
@@ -15205,15 +15438,6 @@ Bank6_Character_Names_ShikiEiki_3
 	BYTE	#%00101000
 
 	_align	6
-*Bank6_LandScape_Playfield_Mask
-*	BYTE	#%00000000
-*	BYTE	#%10000000
-*	BYTE	#%11000000
-*	BYTE	#%11100000
-*	BYTE	#%11110000
-*	BYTE	#%11111000
-
-	_align	6
 Bank6_LandScape_BaseColor
 	BYTE	#$40
 	BYTE	#$D0
@@ -15256,7 +15480,16 @@ Bank6_Return_JumpTable
 	BYTE	#>Bank7_Return-1
 	BYTE	#<Bank7_Return-1
 
-Bank6_
+	_align	8
+Bank6_Death_Sprite_Pointers
+	BYTE	#<Bank6_Common_Enemy_Death_0
+	BYTE	#>Bank6_Common_Enemy_Death_0
+	BYTE	#<Bank6_Common_Enemy_Death_1
+	BYTE	#>Bank6_Common_Enemy_Death_1
+	BYTE	#<Bank6_Common_Enemy_Death_2
+	BYTE	#>Bank6_Common_Enemy_Death_2
+	BYTE	#<Bank6_Common_Enemy_Death_3
+	BYTE	#>Bank6_Common_Enemy_Death_3
 
 	_align	12
 Bank6_Common_Enemy_Death_0
@@ -15302,29 +15535,6 @@ Bank6_Common_Enemy_Death_2
 	byte	#%00011000
 	byte	#%10000001
 	byte	#%01100110	
-
-	_align	2
-Bank6_Common_Enemy_Sprite_Pointers_0
-	BYTE	#<Bank6_Common_Enemy_Soul_0
-	BYTE	#>Bank6_Common_Enemy_Soul_0
-
-
-	_align	2
-Bank6_Common_Enemy_Sprite_Pointers_1
-	BYTE	#<Bank6_Common_Enemy_Soul_1
-	BYTE	#>Bank6_Common_Enemy_Soul_1
-
-
-	_align	2
-Bank6_Common_Enemy_Sprite_Pointers_2
-	BYTE	#<Bank6_Common_Enemy_Soul_2
-	BYTE	#>Bank6_Common_Enemy_Soul_2
-
-
-	_align	2
-Bank6_Common_Enemy_Color_Pointers
-	BYTE	#<Bank6_Common_Enemy_Soul_Colors
-	BYTE	#>Bank6_Common_Enemy_Soul_Colors
 
 	_align	12
 Bank6_Common_Enemy_Death_Colors
@@ -15387,7 +15597,7 @@ Bank6_Common_Enemy_Soul_2
 	byte	#%01110000	
 
 	_align	12
-Bank6_Common_Enemy_Soul_Colors
+Bank6_Soul_Colors
 	byte	#$46
 	byte	#$48
 	byte	#$4a
@@ -15545,8 +15755,66 @@ start_bank6
 *
 *	JMP	Bank7_AddDanmaku
 
+Bank7_SummonedAtEnemyX
+	LDA	#$1F
+	STA	temp01
+
+**	LDA	#36
+**	STA	temp04
+
+	BIT	NewLoadDelay
+	BMI	Bank7_BossIsDifferent
+
+	LDA	EnemySettings
+	AND	#3
+	ASL
+	TAY
+
+	LDA	Bank7_EnemyNUSIZDanmakuXPointers,y
+	STA	temp05
+
+	LDA	Bank7_EnemyNUSIZDanmakuXPointers+1,y
+	STA	temp06
+
+	JSR	Bank7_CallRandom	
+	AND	#3
+	TAY
+
+	LDA	#36	
+	CLC
+	SBC	(temp05),y
+	STA	temp04
+
+	JMP	Bank7_WasNoBossNope
+Bank7_BossIsDifferent	
 
 
+
+
+
+
+Bank7_WasNoBossNope
+	LDA	EnemyX
+	SEC
+	SBC	temp04
+	LSR
+	LSR
+*
+*	Must be 0-31
+*
+	CMP	#32
+	BCC   	Bank7_SeemsLikeOK2Me
+	JMP	Bank7_ReturnFromAnything
+
+Bank7_SeemsLikeOK2Me
+	STA	temp02
+
+	JSR	Bank7_Fall_On_Eiki
+
+	ORA	temp02
+	STA	temp02
+
+	JMP	Bank7_AddDanmaku
 *
 *	Input: temp02
 *
@@ -16112,6 +16380,80 @@ Bank7_NotAMessageToBeDisplayed
 *
 	SEC
 	SBC	#2
+	TAY
+
+	LDA	Bank7_Boss_Flag,y
+	BPL	Bank7_No_Boss_Summoned
+	JMP	Bank7_Set_Boss_Things
+Bank7_No_Boss_Summoned
+	LDA	NewLoadDelay
+	AND	#%01111111
+	STA	NewLoadDelay
+
+	LDA	Bank7_EnemyTypeAndStartNUSIZ,y
+	STA	EnemySettings	
+	AND	#3
+	STA	temp01
+
+	LDA	EnemySettings2
+	AND	#7
+	STA	EnemySettings2
+
+	LDA	EnemySettings
+	LSR
+	LSR
+	TAY
+*
+*LandScape = $BA
+*
+*	0-2: Counter
+*	  3: Auto Increment 
+*	4-5: Danmaku Sound
+*	  6: HoldNextLoading
+*	  7: Danmaku Shot
+*
+*MessagePointer = $BC
+*
+*	0-5: MessageID
+*	  6: IgnoreNewEventHoldFlag
+*	  7: Message is Displayed
+*
+*EnemyX = $BE 
+*DeathX = $BF
+
+StartOnTheRight = 164
+
+	LDA	LandScape
+	AND	#%10110111
+	ORA	Bank7_SetFlagsORA,y
+	STA	LandScape
+
+	LDA	MessagePointer
+	AND	#%10111111
+	STA	MessagePointer
+
+	LDA	Bank7_StartX,y
+	CMP	#0
+	BNE	Bank7_JustSaveX
+
+	LDY	temp01
+	LDA	Bank7_StartXOnTheLeftBasedOnNUSIZ,y
+
+Bank7_JustSaveX
+	STA	EnemyX
+*
+*	Bit 7 should be 0 anyway, since this is not a boss.
+*
+	JMP	Bank7_IncrementLevelPointer
+
+Bank7_Set_Boss_Things
+*
+*	Don't have to store boss index, since it would be equal to the level number - 1.
+*
+	LDA	NewLoadDelay
+	ORA	#%10000000
+	STA	NewLoadDelay
+
 
 Bank7_IncrementLevelPointer
 	INC 	LevelPointer
@@ -16138,6 +16480,227 @@ Bank7_ReturnNoRTS
    	pha
 
    	jmp	bankSwitchJump
+
+Bank7_HandTheEnemy
+
+	LDA 	NewLoadDelay
+	BMI	Bank7_HandleTheBoss
+	
+	LDA 	EnemySettings
+	LSR
+	LSR
+	ASL
+	TAY
+
+	LDA	Bank7_BehavePointers,y
+	STA	temp01
+	LDA	Bank7_BehavePointers+1,y
+	STA	temp02
+	JMP	(temp01)
+
+Bank7_Behavour_0
+	STY	temp09
+
+	CLC
+*
+*	Get the difficulty.
+*
+	LDA	eikiY
+	ROL
+	ROL
+	ROL
+	AND	#3
+	TAY
+
+	LDA	counter
+	AND	Bank7_Counter_Skips,y
+	CMP	Bank7_Counter_Skips,y	
+	BNE	Bank7_NoChangeInSettings	
+*
+*	Uses the counter to make the movement more life-like.
+*	Values: 
+*	     0: Go forwards	
+*	     1: Go backwards
+*	     2:	Shoot danmaku 
+*	     3: Stand still 
+*
+
+	LDA	EnemySettings2
+	AND	#%00111000
+	CMP	#0
+	BEQ	Bank7_Behavour_0_Do_A_New_Step
+	SEC
+	SBC	#%00001000
+	STA	temp01
+
+	LDA	EnemySettings2
+	AND	#%11000111
+	ORA	temp01
+	STA	EnemySettings2
+
+	CLC
+	AND	#%11000000	
+	ROL
+	ROL
+	ROL
+	
+	TAY	
+	LDA	Bank7_FakeRandoms_0,y
+	JMP	Bank7_FakeRandoms
+
+Bank7_Behavour_0_Do_A_New_Step
+	LDA	EnemySettings2
+	ORA	#%00111000
+	STA	EnemySettings2
+
+	JSR	Bank7_CallRandom
+
+*
+* X < Y
+* LDA	X	
+* CMP	Y
+* BCS   else 	 
+*
+* X <= Y
+*
+* LDA	Y
+* CMP	X
+* BCC	else
+*
+* X > Y 
+*
+* LDA	Y
+* CMP	X
+* BCS	else
+*
+* X >= Y
+*
+* LDA	X
+* CMP	Y
+* BCC 	else
+*	
+
+Bank7_FakeRandoms
+	CMP	#160	
+	BCS	Bank7_Behavour_0_Random_LargerThan_1
+Bank7_Behavour_0_Move_R
+	LDA	EnemySettings2
+	AND	#%00111111
+	STA	EnemySettings2
+	
+	INC	EnemyX
+	LDA	EnemyX
+
+	CMP 	#StartOnTheRight
+	BCC	Bank7_NoRemoveBehave0
+*	JMP	Bank7_Behavour_0_Move_L
+
+Bank7_RemoveCommonEnemy
+	LDA	#0
+	STA	EnemyX
+	STA	EnemySettings
+
+	LDA	NewLoadDelay
+	AND	#%01111111
+	STA	NewLoadDelay
+
+	LDA	LandScape
+	AND	#%10111111
+	ORA	#%00001000
+	STA	LandScape
+
+	LDA	#<Bank6_Enemy_Sprite_Empty
+	STA	EnemySpritePointer
+	LDA	#>Bank6_Enemy_Sprite_Empty
+	STA	EnemySpritePointer+1
+
+	JMP	Bank7_ReturnFromAnything
+Bank7_Behavour_0_Random_LargerThan_1
+	TAY
+
+	LDA	EnemySettings
+	AND	#3	
+	TAX
+
+	TYA
+	CMP	Bank7_SecondNumForCMPOnNUSIZ,x	
+	BCS	Bank7_Behavour_0_Random_LargerThan_2
+	
+Bank7_Behavour_0_Move_L
+	LDA	EnemySettings2
+	AND	#%00111111
+	ORA	#%01000000
+	STA	EnemySettings2
+
+	DEC	EnemyX
+	
+	LDA	EnemySettings
+	AND	#3
+	TAX	
+	LDA	Bank7_StartXOnTheLeftBasedOnNUSIZ,x
+	CMP	EnemyX	
+	BCC	Bank7_NoRemoveBehave0
+	JMP	Bank7_Behavour_0_Move_R
+
+Bank7_Behavour_0_Random_LargerThan_2
+	BIT	EnemySettings2
+	BVS	Bank7_DanmakuAlreadyShootBe0	
+
+	LDA	EnemySettings2
+	AND	#%00111111
+	ORA	#%10000000
+	STA	EnemySettings2
+
+Bank7_DanmakuAlreadyShootBe0	
+Bank7_NoRemoveBehave0
+Bank7_NoChangeInSettings
+	LDA	eikiSettings
+	AND	#3
+	ASL
+	TAY	
+	
+	LDA	Bank7_Soul_Sprite_Pointers,y
+	STA 	EnemySpritePointer
+	LDA	Bank7_Soul_Sprite_Pointers+1,y
+	STA 	EnemySpritePointer+1
+
+	LDA	#<Bank6_Soul_Colors
+	STA 	EnemyColorPointer
+	LDA	#>Bank6_Soul_Colors
+	STA 	EnemyColorPointer+1
+
+	LDA	EnemySettings2
+	AND	#%11111000
+	CMP	#%10111000
+	BNE	Bank7_NoNewDanmakuBe0
+
+	LDA	EnemySettings2
+	ORA	#%01000000
+	STA	EnemySettings2
+
+	JMP	Bank7_SummonedAtEnemyX
+Bank7_NoNewDanmakuBe0
+
+**	LDA	EnemyX
+**	SEC
+**	SBC	#36
+**	LSR
+**	LSR
+**
+**	STA	temp09
+**
+**	LDA	#15
+**	STA	temp08
+**
+**	JSR	Bank7_DisplayDanmakuPixel	
+
+	JMP	Bank7_ReturnFromAnything
+
+Bank7_HandleTheBoss
+
+
+
+	JMP	Bank7_ReturnFromAnything
 
 Bank7_CallRandom
 	LDA	random
@@ -16166,12 +16729,139 @@ Bank7_CallRandom
 *	-------------------
 *	 00:	Eiki
 *	 01:	Komachi
+*	 02:	Cirno
+*	 03:	Marisa
+*	 04:	Reimu
+*	 05: 	Cirnobyl
+*	 06:	Rukia
+*	 07:	Sariel
 *
 
 
 *
 *	Data Section
 *
+
+	_align	6
+Bank7_Soul_Sprite_Pointers
+	BYTE	#<Bank6_Common_Enemy_Soul_0
+	BYTE	#>Bank6_Common_Enemy_Soul_0
+	BYTE	#<Bank6_Common_Enemy_Soul_1
+	BYTE	#>Bank6_Common_Enemy_Soul_1
+	BYTE	#<Bank6_Common_Enemy_Soul_2
+	BYTE	#>Bank6_Common_Enemy_Soul_2
+
+*
+*	Behaviours:
+*	0: Soul goes slowly from left to right, disappears as it reaches the StartOnTheRight value. 
+*          Summons a basic danmaku random times. Sprite independent of the direction
+*	1: Soul goes slowly from right to left, disappears as it reaches the left start poz based on NUSIZ. 
+*          Summons a basic danmaku random times. Sprite independent of the direction
+*
+*
+	_align	8
+Bank7_EnemyNUSIZDanmakuXPointers
+	BYTE	#<Bank7_EnemyNUSIZDanmakuX_00
+	BYTE	#>Bank7_EnemyNUSIZDanmakuX_00
+	BYTE	#<Bank7_EnemyNUSIZDanmakuX_01
+	BYTE	#>Bank7_EnemyNUSIZDanmakuX_01
+	BYTE	#<Bank7_EnemyNUSIZDanmakuX_02
+	BYTE	#>Bank7_EnemyNUSIZDanmakuX_02
+	BYTE	#<Bank7_EnemyNUSIZDanmakuX_03
+	BYTE	#>Bank7_EnemyNUSIZDanmakuX_03
+
+	_align	4
+Bank7_EnemyNUSIZDanmakuX_00
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+
+	_align	4
+Bank7_EnemyNUSIZDanmakuX_01
+	BYTE	#0
+	BYTE	#16
+	BYTE	#0
+	BYTE	#16
+
+	_align	4
+Bank7_EnemyNUSIZDanmakuX_02
+	BYTE	#0
+	BYTE	#32
+	BYTE	#0
+	BYTE	#32
+
+	_align	4
+Bank7_EnemyNUSIZDanmakuX_03
+	BYTE	#0
+	BYTE	#16
+	BYTE	#32
+	BYTE	#16
+
+
+
+	_align	4  
+Bank7_FakeRandoms_0
+	BYTE	#0
+	BYTE	#161
+	BYTE	#255
+	BYTE	#255
+
+	_align	4
+Bank7_Counter_Skips
+	BYTE	#7
+	BYTE	#3
+	BYTE	#3
+	BYTE	#1
+
+	_align	4
+Bank7_SecondNumForCMPOnNUSIZ
+	BYTE	#196
+	BYTE	#188
+	BYTE	#188
+	BYTE	#180
+
+	_align	2
+Bank7_BehavePointers
+	BYTE	#<Bank7_Behavour_0
+	BYTE	#>Bank7_Behavour_0
+
+	_align	4
+Bank7_StartXOnTheLeftBasedOnNUSIZ
+	BYTE	#32
+	BYTE	#16
+	BYTE	#0
+	BYTE	#0
+
+	_align	2
+Bank7_Boss_Flag
+	BYTE	#0
+	BYTE	#0
+*
+*	If 0, start on the left depending on NUSIZ
+*
+
+	_align  2
+Bank7_StartX
+ 	BYTE	#0
+ 	BYTE	#StartOnTheRight
+*
+*	Bit 3: Auto Increment of Landscape
+*	Bit 6: Hold Increment of EventPointer
+*
+
+	_align	2
+Bank7_SetFlagsORA
+	BYTE	#%01001000
+	BYTE	#%01001000
+*
+*	Type #0: Soul(s), moving from left to right
+*	Type #1: Soul(s), moving from rigth to left
+*
+	_align	2
+Bank7_EnemyTypeAndStartNUSIZ
+	BYTE	#$00
+	BYTE	#$10
 
 	_align	1
 Bank7_SpellPictureValsForMessages
@@ -16184,9 +16874,11 @@ Bank7_LevelArrayPointers
 
 	_align	3
 Bank7_LevelArray_1
-	BYTE	#%10000001
+	BYTE	#%10000001	; Display a message
 	BYTE	#16
-	BYTE	#%10000010
+	BYTE	#%10000010	; Summon a soul from left to right
+**	BYTE	#16
+**	BYTE	#%10000011	; Summon a soul from right to left
 
 	BYTE	#127
 	BYTE	#%11111111
@@ -17568,15 +18260,6 @@ Bank8_HorPos
 ** MaxX = 159
 NumOfLoop=3
 
-*	STA	WSYNC
-*	LDA	#$1e
-*	STA	COLUBK
-
-
-*	STA	WSYNC
-*	LDA	#$1e
-*	STA	COLUBK
-
 	LDX	#NumOfLoop
 Bank8_NextHorPoz
 	STA	WSYNC
@@ -17588,9 +18271,6 @@ Bank8_DivideLoop
    	sta	RESP0,X	
 	DEX
 	BPL	Bank8_NextHorPoz	
-
-*	LDA	#$88
-*	STA	COLUBK
 
 *
 *	Set Basics
