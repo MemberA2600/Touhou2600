@@ -237,7 +237,8 @@ EnemyColorPointer = $C4
 
 EnemySettings2 = $C6
 *
-*	0-2: Explosion Sprite Counter
+*	0-1: Explosion Sprite Counter
+*	  2: Free
 *	3-5: Free to use counter
 *	6-7: Free to use state
 * 
@@ -1669,7 +1670,7 @@ Bank1_NoGameOverScreen
 
 	JSR	Bank1_DisplaySpellCardFace
 	STA	WSYNC
-	STA	WSYNC
+***	STA	WSYNC
 
 	JMP	Bank1_Main_Ended
 
@@ -12751,10 +12752,16 @@ Bank5_DisplaySpellCardFace
 **	STA	ENAM0
 **	STA	ENAM1
 
+	LDA	#255
+	STA	PF0	
+	LDA	#0
+	STA	COLUPF	
+
 	LDA	SpellPicture
 	AND	#$0F
 	TAX	
 	LDA	Bank5_SpellCard_BG,x
+
 	STA	WSYNC
 	STA	COLUBK			; 3 
 	LDA	Bank5_SpellCard_FG,x	; 5 (8)
@@ -12806,10 +12813,6 @@ Bank5_SpellCardPicture_Even
 Bank5_SpellCardPicture_Even_Loop
 	STA	WSYNC
 	STA	HMOVE			; 3
-
-***	LDA	#255
-***	STA	GRP0
-***	STA	GRP1			; 8 (11)
 
 	LDA	(temp03),y		; 5 (7)
 	STA	GRP0			; 3 (10)
@@ -12866,11 +12869,7 @@ Bank5_SpellCardPicture_Odd
 	sleep	2
 	
 Bank5_SpellCardPicture_Odd_Loop
-	STA	HMOVE 	(74)
-
-***	LDA	#255
-***	STA	GRP0
-***	STA	GRP1			
+	STA	HMOVE 	(74)	
 
 	LDA	(temp01),y		; 5 (3)
 	STA	GRP0			; 3 (6)
@@ -12925,6 +12924,7 @@ Bank5_SpellCardPicture_Ended
 	STA	GRP0
 	STA	GRP1
 	STA	HMCLR
+	STA	PF0
 
 ***	LDX	temp17
 ***	TXS
@@ -16396,7 +16396,7 @@ Bank7_No_Boss_Summoned
 	STA	temp01
 
 	LDA	EnemySettings2
-	AND	#7
+	AND	#3
 	STA	EnemySettings2
 
 	LDA	EnemySettings
@@ -16482,6 +16482,8 @@ Bank7_ReturnNoRTS
    	jmp	bankSwitchJump
 
 Bank7_HandTheEnemy
+	LDA	#$00
+	STA	EnemyBackColor 
 
 	LDA 	NewLoadDelay
 	BMI	Bank7_HandleTheBoss
@@ -16499,7 +16501,13 @@ Bank7_HandTheEnemy
 	JMP	(temp01)
 
 Bank7_Behavour_0
-	STY	temp09
+
+ReverseRandomNum = 130
+ShootRandomNum = 165
+
+	TYA
+	LSR
+	STA	temp09
 
 	CLC
 *
@@ -16554,7 +16562,6 @@ Bank7_Behavour_0_Do_A_New_Step
 	STA	EnemySettings2
 
 	JSR	Bank7_CallRandom
-
 *
 * X < Y
 * LDA	X	
@@ -16581,19 +16588,52 @@ Bank7_Behavour_0_Do_A_New_Step
 *	
 
 Bank7_FakeRandoms
-	CMP	#160	
+	CMP	#ReverseRandomNum	
 	BCS	Bank7_Behavour_0_Random_LargerThan_1
-Bank7_Behavour_0_Move_R
+
+	LDY	temp09
+	CPY	#0
+	BNE	Bank7_Behavour_0_Move_L
+	JMP	Bank7_Behavour_0_Move_R
+
+Bank7_Behavour_0_Move_L
+***	LDY	temp09
+
 	LDA	EnemySettings2
 	AND	#%00111111
+**	ORA	#%01000000
+	ORA	Bank7_Move_L_Change_Bits,y
 	STA	EnemySettings2
-	
+
+	DEC	EnemyX
+
+	LDA	EnemySettings
+	AND	#3
+	TAX	
+	LDA	Bank7_StartXOnTheLeftBasedOnNUSIZ,x
+	CMP	EnemyX	
+	BCC	Bank7_NoRemoveBehave0
+
+	CPY	#0
+	BNE	Bank7_RemoveCommonEnemy
+
+Bank7_Behavour_0_Move_R
+***	LDY	temp09
+
+	LDA	EnemySettings2
+	AND	#%00111111
+	ORA	Bank7_Move_R_Change_Bits,y
+	STA	EnemySettings2
+
 	INC	EnemyX
 	LDA	EnemyX
 
 	CMP 	#StartOnTheRight
 	BCC	Bank7_NoRemoveBehave0
-*	JMP	Bank7_Behavour_0_Move_L
+
+	CPY	#0
+	BEQ	Bank7_RemoveCommonEnemy
+	JMP	Bank7_Behavour_0_Move_L
 
 Bank7_RemoveCommonEnemy
 	LDA	#0
@@ -16625,24 +16665,14 @@ Bank7_Behavour_0_Random_LargerThan_1
 	TYA
 	CMP	Bank7_SecondNumForCMPOnNUSIZ,x	
 	BCS	Bank7_Behavour_0_Random_LargerThan_2
-	
-Bank7_Behavour_0_Move_L
-	LDA	EnemySettings2
-	AND	#%00111111
-	ORA	#%01000000
-	STA	EnemySettings2
 
-	DEC	EnemyX
-	
-	LDA	EnemySettings
-	AND	#3
-	TAX	
-	LDA	Bank7_StartXOnTheLeftBasedOnNUSIZ,x
-	CMP	EnemyX	
-	BCC	Bank7_NoRemoveBehave0
+	LDY	temp09
+	CPY	#0
+	BEQ	Bank7_Behavour_0_Move_L
 	JMP	Bank7_Behavour_0_Move_R
-
+	
 Bank7_Behavour_0_Random_LargerThan_2
+
 	BIT	EnemySettings2
 	BVS	Bank7_DanmakuAlreadyShootBe0	
 
@@ -16770,6 +16800,16 @@ Bank7_EnemyNUSIZDanmakuXPointers
 	BYTE	#<Bank7_EnemyNUSIZDanmakuX_03
 	BYTE	#>Bank7_EnemyNUSIZDanmakuX_03
 
+	_align	2
+Bank7_Move_R_Change_Bits
+	BYTE	#0
+	BYTE	#64
+
+	_align	2
+Bank7_Move_L_Change_Bits
+	BYTE	#64
+	BYTE	#0
+
 	_align	4
 Bank7_EnemyNUSIZDanmakuX_00
 	BYTE	#0
@@ -16799,30 +16839,31 @@ Bank7_EnemyNUSIZDanmakuX_03
 	BYTE	#16
 
 
-
 	_align	4  
 Bank7_FakeRandoms_0
 	BYTE	#0
-	BYTE	#161
+	BYTE	#131
 	BYTE	#255
 	BYTE	#255
 
 	_align	4
 Bank7_Counter_Skips
-	BYTE	#7
-	BYTE	#3
 	BYTE	#3
 	BYTE	#1
+	BYTE	#1
+	BYTE	#0
 
 	_align	4
 Bank7_SecondNumForCMPOnNUSIZ
-	BYTE	#196
-	BYTE	#188
-	BYTE	#188
-	BYTE	#180
+	BYTE	#165
+	BYTE	#157
+	BYTE	#157
+	BYTE	#149
 
 	_align	2
 Bank7_BehavePointers
+	BYTE	#<Bank7_Behavour_0
+	BYTE	#>Bank7_Behavour_0
 	BYTE	#<Bank7_Behavour_0
 	BYTE	#>Bank7_Behavour_0
 
@@ -16860,8 +16901,8 @@ Bank7_SetFlagsORA
 *
 	_align	2
 Bank7_EnemyTypeAndStartNUSIZ
-	BYTE	#$00
-	BYTE	#$10
+	BYTE	#0
+	BYTE	#%00000100
 
 	_align	1
 Bank7_SpellPictureValsForMessages
@@ -16876,9 +16917,9 @@ Bank7_LevelArrayPointers
 Bank7_LevelArray_1
 	BYTE	#%10000001	; Display a message
 	BYTE	#16
-	BYTE	#%10000010	; Summon a soul from left to right
-**	BYTE	#16
-**	BYTE	#%10000011	; Summon a soul from right to left
+	BYTE	#%10000011	; Summon a soul from left to right
+	BYTE	#16
+	BYTE	#%10000010	; Summon a soul from right to left
 
 	BYTE	#127
 	BYTE	#%11111111
