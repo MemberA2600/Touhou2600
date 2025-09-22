@@ -422,6 +422,9 @@ OverScanBank1
 * begins.
 *
 
+	LDA	#$0e
+	STA	DanmakuColor
+
 	LDA	SpellPicture
 	AND	#$0F
 	CMP	#0
@@ -1097,6 +1100,9 @@ Bank1_EikiDead
 	ORA	#$40
 	STA	eikiBackColor
 
+**	LDA	#0
+**	STA	DanmakuColor
+
 	JMP	Bank1_EikiGotSpritePointer
 Bank1_EikiSpell
 	LDA	eikiSettings2
@@ -1361,6 +1367,16 @@ VBLANKBank1
 	JSR	Bank1_SoundPlayer
 
 Bank1_EnemyStuff
+	DEC 	EnemyBackColor
+	LDA	EnemyBackColor
+	AND	#$0F
+	CMP	#$0F
+	BNE	Bank7_NoZeroEnemyBackColor
+
+	LDA	#$00
+	STA	EnemyBackColor 
+Bank7_NoZeroEnemyBackColor
+
 	BIT	MessagePointer
 	BMI	Bank1_MessageGameOverSpell
 
@@ -1398,6 +1414,11 @@ Bank1_DoneEnemyStuff
 	JMP	Bank1_ThereWasNoBoom		
 
 Bank1_ThereIsBoom
+	LDA	counter
+	AND	#3
+	CMP	#3
+	BNE	Bank1_DontIncrementBoom
+
 	LDA	EnemySettings2
 	AND	#%11111100
 	STA	temp01
@@ -1410,7 +1431,8 @@ Bank1_ThereIsBoom
 	ORA	temp01
 	STA	EnemySettings2
 	
-	CPY	#3
+	AND	#3
+	CMP	#3
 	BNE	Bank1_DontSetXTo0	
 
 	LDA	#0
@@ -1419,6 +1441,7 @@ Bank1_ThereIsBoom
 Bank1_DontSetXTo0	
 Bank1_ThereWasNoBoom	
 Bank1_MessageGameOverSpell
+Bank1_DontIncrementBoom
 
 	LDA	LandScape
 	AND	#%00001000
@@ -1690,6 +1713,7 @@ Bank1_ResetThings
 
 	LDA	#0
 	STA	WSYNC
+****	STA	PF0
 	STA	PF1
 	STA	PF2
 	STA	GRP0
@@ -1781,7 +1805,7 @@ Bank1_Main_Ended
 	STA	COLUP0
 	STA	COLUP1	
 	STA	COLUPF	
-	
+	STA	PF0
 
 	ldx	stack
 	txs
@@ -14977,6 +15001,12 @@ Bank6_DrawCommonEnemies
 	LDA	#%00000101
 	STA	CTRLPF
 
+	LDA	#0
+	STA	COLUPF
+
+	LDA	#255
+	STA	PF0
+
 	LDA	EnemySettings2
 	AND	#3
 	ASL
@@ -15014,19 +15044,21 @@ Bank6_setFine
 	STA	WSYNC
 	STA	HMOVE
 
-	LDY	#8
+	LDY	#7
 	LDA	EnemyBackColor	
+	STA	WSYNC
+	STA	COLUBK
+
+	LDA	DeathX
+	CMP	#0
+	BEQ	Bank6_WasteSomeLoop
+	DEY
 
 Bank6_WasteSomeLoop
 	STA	WSYNC
-	STA	COLUPF
-	STA	COLUBK
 
 	DEY	
 	BPL	Bank6_WasteSomeLoop
-
-	LDA	#255
-	STA	PF0
 
 	LDY	#11
 	
@@ -16481,13 +16513,177 @@ Bank7_ReturnNoRTS
 
    	jmp	bankSwitchJump
 
+Bank7_EikiWouldHit
+*
+*	Check if Eiki's shot would hit the target.
+*
+*	Input:	
+*	--------------
+*	temp02:	The X to check
+*	temp03: Adder (8 for normal, 16 for boss)
+*	temp05: Base to add or remove
+*	
+*	Output:
+*	--------------
+*	Y: 0 if nope, 255 if OK
+*
+
+	LDA	eikiX
+	AND	#%01111111
+	CLC
+	ADC	#43
+	STA	temp01
+
+	LDA	temp02
+	SEC	
+	SBC	temp05
+
+	CMP	temp01
+	BCS	Bank7_EnemyXOutOfBounds
+
+	LDA	temp02
+	CLC
+	ADC	temp03
+	CMP	temp01
+	BCC	Bank7_EnemyXOutOfBounds
+
+	RTS
+Bank7_EnemyXOutOfBounds
+	LDY	#0
+	RTS
+
+
 Bank7_HandTheEnemy
-	LDA	#$00
-	STA	EnemyBackColor 
 
 	LDA 	NewLoadDelay
 	BMI	Bank7_HandleTheBoss
+*
+*	Check if one was shot.
+*	
+
+	LDA	#12
+	BIT	eikiSettings
+	BVS	Bank7_EikiDoesMagic
+
+	LDA	StickBuffer
+	BPL	Bank7_NoBulletOnTop
+	LDA	#6
+Bank7_EikiDoesMagic
+	STA	temp05
+
+	LDY	#0
+
+	LDA	#8
+	STA	temp03
+
+	LDA	EnemySettings
+	AND	#3
+	STA	temp04
+
+	LDA	EnemyX
+	STA	temp02
+
+	INY
+	JSR	Bank7_EikiWouldHit
+	CPY	#1		
+	BEQ	Bank7_FirstHit
+
+	LSR	temp04
+	BCC	Bank7_SkipSecondSprite
+
+	LDA	EnemyX	
+	CLC
+	ADC	#16
+	STA	temp02
 	
+	INY
+	JSR	Bank7_EikiWouldHit
+	CPY	#2		
+	BEQ	Bank7_FirstHit
+
+Bank7_SkipSecondSprite
+	LSR	temp04
+	BCC	Bank7_SkipThirdSprite
+
+	LDA	EnemyX	
+	CLC
+	ADC	#32
+	STA	temp02
+
+	INY	
+	JSR	Bank7_EikiWouldHit
+	CPY	#3		
+	BNE	Bank7_NoneWasHit
+
+Bank7_FirstHit	
+	LDA	temp02
+	STA	DeathX
+
+	LDA	#$1e
+	STA	EnemyBackColor
+
+	LDA	EnemySettings2
+	AND	#%11111100
+	STA	EnemySettings2
+
+	LDA	eikiSettings2
+	ORA	#%10000000
+	STA	eikiSettings2
+*
+*	Points:	 
+*	-Red Soul:	100
+*
+
+
+
+
+	LDA	EnemySettings
+	AND	#3
+
+	CMP	#$00
+	BNE	Bank7_ThereAreOthers
+	JMP	Bank7_RemoveCommonEnemy
+
+Bank7_ThereAreOthers
+	CMP	#$03
+	BEQ	Bank7_ThereWere3
+
+	CPY	#1
+	BNE	Bank7_NoNeedToSubtractX
+
+	TAY
+	LDA	Bank7_ThereWere2_SubstractX,y
+
+	STA	temp01
+	LDA	EnemyX
+	SEC
+	SBC	temp01
+	STA	EnemyX
+Bank7_NoNeedToSubtractX
+
+	LDA 	EnemySettings
+	AND	#%11111100
+	STA	EnemySettings
+
+	JMP	Bank7_ContinueAsUsual
+Bank7_ThereWere3
+	DEY
+
+	LDA 	EnemySettings
+	AND	#%11111100
+	ORA	Bank7_GetNewNUSIZIf3,y
+	STA	EnemySettings
+
+	LDA 	EnemyX
+	SEC
+	SBC	Bank7_SubtractXIf3,y
+	STA	EnemyX
+
+Bank7_NoneWasHit
+Bank7_NoBulletOnTop
+Bank7_SkipThirdSprite
+Bank7_ContinueAsUsual
+
 	LDA 	EnemySettings
 	LSR
 	LSR
@@ -16771,6 +16967,23 @@ Bank7_CallRandom
 *
 *	Data Section
 *
+	_align	3
+Bank7_GetNewNUSIZIf3
+	BYTE	#$01
+	BYTE	#$02
+	BYTE	#$01
+
+	_align	3
+Bank7_SubtractXIf3
+	BYTE	#16
+	BYTE	#0
+	BYTE	#0
+
+	_align	3
+Bank7_ThereWere2_SubstractX
+	BYTE	#0
+	BYTE	#16
+	BYTE	#32
 
 	_align	6
 Bank7_Soul_Sprite_Pointers
@@ -18242,12 +18455,22 @@ Bank8_No_Reset_For_TextCounter_End
 
 Bank8_Eiki_Field
 
+	LDY	#0
+	LDX	eikiBackColor
+	CPX	#0
+	BEQ	Bank8_NoPF0Stuff
+	STY	DanmakuColor
+	STY	COLUPF
+	LDY	#255
+Bank8_NoPF0Stuff
+
 	LDX	eikiBackColor
 	LDA	#0
 	STA	WSYNC
 	STX	COLUBK
+	STA	COLUPF
 	STA	HMCLR
-	STA	PF0		; 9
+	STY	PF0		; 9
 *
 *	Set sprite
 *
@@ -18284,8 +18507,6 @@ Bank8_NoIncInvisibility
 	STA	temp04				; 16 (55)
 
 Bank8_InvisibleSprite
-	
-
 
 *	LDA	#$1e
 *	STA	COLUBK
