@@ -238,7 +238,7 @@ EnemyColorPointer = $C4
 EnemySettings2 = $C6
 *
 *	0-1: Explosion Sprite Counter
-*	  2: Free
+*	  2: CheckForScore Flag
 *	3-5: Free to use counter
 *	6-7: Free to use state
 * 
@@ -1402,6 +1402,65 @@ Bank7_NoZeroEnemyBackColor
 	JMP	Bank1_DoneEnemyStuff
 Bank1_EnemyCurrent
 	JSR	Bank1_HandTheEnemy
+
+	LDA	EnemySettings2
+	AND	#%00000100
+	CMP	#%00000100
+	BNE	Bank1_NoEnemyDeath
+
+	LDA	EnemySettings2
+	AND	#%11111011
+	STA	EnemySettings2
+
+	LDX	#4	
+Bank1_SaveTempsLoop2
+	LDA	Score_1,x
+	STA	temp01,x
+	DEX	
+	BPL	Bank1_SaveTempsLoop2
+
+	CLC
+	SED	
+	
+	LDA	Score_5
+	ADC	temp07
+	STA	Score_5
+
+	LDA	Score_4
+	ADC	#0
+	STA	Score_4	
+
+	LDA	Score_3
+	ADC	#0
+	STA	Score_3	
+
+	LDA	Score_2
+	ADC	#0
+	STA	Score_2	
+
+	LDA	Score_1
+	ADC	#0
+	STA	Score_1	
+
+	JSR	Bank1_CheckForPoints
+
+	LDA	temp18
+	CMP	#0
+	BEQ	Bank1_NoSoundChange2
+
+	LDA	#255
+	STA	temp19
+	JSR	Bank1_SoundPlayer
+
+Bank1_NoSoundChange2
+
+	LDA	ScoreColorAdder
+	ORA	#%00000111
+	STA	ScoreColorAdder
+
+	CLD
+
+Bank1_NoEnemyDeath
 Bank1_DoneEnemyStuff
 
 	LDA	DeathX
@@ -1657,6 +1716,7 @@ VBlankEndBank1
 	STA	temp18
 	
 	JSR	Bank1_Display_Message
+	STA	WSYNC
 
 	JMP	Bank1_MoveOnWithMain
 Bank1_NoMessageDisplayed
@@ -1679,7 +1739,7 @@ Bank1_MoveOnWithMain
 	
 	JSR	Bank1_DisplayDeathScreen
 	STA	WSYNC
-	STA	WSYNC
+****	STA	WSYNC
 
 	JMP	Bank1_Main_Ended
 
@@ -14984,19 +15044,37 @@ Bank6_DrawCommonEnemies
 *
 *	temp03 - temp04: Death Sprite Pointers
 *
+	LDX	#0
+	STX	NUSIZ0
+
+	LDA	EnemyX
+	CMP	#16
+	BCS	Bank6_WasNormal
 
 	LDA	EnemySettings
 	AND	#3
+	CMP	#$02
+	BCC	Bank6_WasNormal2
+	
+	STX	NUSIZ1
+	LDA	EnemyX
+	CLC
+	ADC	#36
+	STA	temp02
+
+	JMP	Bank6_WasStrange
+Bank6_WasNormal
+	LDA	EnemySettings
+	AND	#3
+Bank6_WasNormal2
 	STA	NUSIZ1
-
-	LDA	#0
-	STA	NUSIZ0
-
-	LDA	DeathX
-	STA	temp01
 
 	LDA	EnemyX
 	STA	temp02
+
+Bank6_WasStrange
+	LDA	DeathX
+	STA	temp01
 
 	LDA	#%00000101
 	STA	CTRLPF
@@ -16453,7 +16531,7 @@ Bank7_No_Boss_Summoned
 *EnemyX = $BE 
 *DeathX = $BF
 
-StartOnTheRight = 164
+StartOnTheRight = 158
 
 	LDA	LandScape
 	AND	#%10110111
@@ -16555,6 +16633,9 @@ Bank7_EnemyXOutOfBounds
 
 Bank7_HandTheEnemy
 
+	LDA	#0
+	STA	temp07
+
 	LDA 	NewLoadDelay
 	BMI	Bank7_HandleTheBoss
 *
@@ -16583,7 +16664,7 @@ Bank7_EikiDoesMagic
 	LDA	EnemyX
 	STA	temp02
 
-	INY
+	LDY	#1
 	JSR	Bank7_EikiWouldHit
 	CPY	#1		
 	BEQ	Bank7_FirstHit
@@ -16596,7 +16677,7 @@ Bank7_EikiDoesMagic
 	ADC	#16
 	STA	temp02
 	
-	INY
+	LDY	#2
 	JSR	Bank7_EikiWouldHit
 	CPY	#2		
 	BEQ	Bank7_FirstHit
@@ -16610,7 +16691,7 @@ Bank7_SkipSecondSprite
 	ADC	#32
 	STA	temp02
 
-	INY	
+	LDY	#3	
 	JSR	Bank7_EikiWouldHit
 	CPY	#3		
 	BNE	Bank7_NoneWasHit
@@ -16630,12 +16711,22 @@ Bank7_FirstHit
 	ORA	#%10000000
 	STA	eikiSettings2
 *
+*	temp07 is used to set the points.
+*	Points = temp07 * 100
+*
 *	Points:	 
 *	-Red Soul:	100
 *
+	LDA	EnemySettings
+	LSR
+	LSR
+	TAY
+	LDA	Bank7_PointsOnType,y
+	STA	temp07
 
-
-
+	LDA	EnemySettings2
+	ORA	#4
+	STA	EnemySettings2
 
 	LDA	EnemySettings
 	AND	#3
@@ -16649,17 +16740,17 @@ Bank7_ThereAreOthers
 	BEQ	Bank7_ThereWere3
 
 	CPY	#1
-	BNE	Bank7_NoNeedToSubtractX
-
+	BNE	Bank7_NoNeedToChangeX
+	
 	TAY
-	LDA	Bank7_ThereWere2_SubstractX,y
-
+	LDA	Bank7_ThereWere2_ChangeX,y
+	
 	STA	temp01
 	LDA	EnemyX
-	SEC
-	SBC	temp01
+	CLC
+	ADC	temp01
 	STA	EnemyX
-Bank7_NoNeedToSubtractX
+Bank7_NoNeedToChangeX
 
 	LDA 	EnemySettings
 	AND	#%11111100
@@ -16948,6 +17039,13 @@ Bank7_CallRandom
 *	001: 	Display a character message based on MessagePointer. The pointer is incremented after afterwards.
 *	002: 	Summons a basic soul enemy on the right
 *	003: 	Summons a basic soul enemy on the left
+*	004: 	Summons two basic souls close on the right
+*	005: 	Summons two basic souls close on the left
+*	006: 	Summons two basic souls with a gap on the right
+*	007: 	Summons two basic souls with a gap on the left
+*	008: 	Summons three basic souls the right
+*	009: 	Summons three basic souls the left
+*
 *
 *	127:    Init LevelCounter to Zero (only for testing)
 *
@@ -16967,6 +17065,7 @@ Bank7_CallRandom
 *
 *	Data Section
 *
+
 	_align	3
 Bank7_GetNewNUSIZIf3
 	BYTE	#$01
@@ -16980,7 +17079,7 @@ Bank7_SubtractXIf3
 	BYTE	#0
 
 	_align	3
-Bank7_ThereWere2_SubstractX
+Bank7_ThereWere2_ChangeX
 	BYTE	#0
 	BYTE	#16
 	BYTE	#32
@@ -17082,18 +17181,34 @@ Bank7_BehavePointers
 
 	_align	4
 Bank7_StartXOnTheLeftBasedOnNUSIZ
-	BYTE	#32
-	BYTE	#16
-	BYTE	#0
-	BYTE	#0
-
-	_align	2
+	BYTE	#33
+	BYTE	#17
+	BYTE	#1
+	BYTE	#1
+*
+*	Based on the levelArray value.
+*
+	_align	8
 Bank7_Boss_Flag
 	BYTE	#0
 	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+	BYTE	#0
+
 *
 *	If 0, start on the left depending on NUSIZ
 *
+*	Based on EnemyTypeAndStartNUSIZ.
+*
+
+	_align  2
+Bank7_PointsOnType
+	BYTE	#1
+	BYTE	#1
 
 	_align  2
 Bank7_StartX
@@ -17103,19 +17218,31 @@ Bank7_StartX
 *	Bit 3: Auto Increment of Landscape
 *	Bit 6: Hold Increment of EventPointer
 *
-
+*	Based on EnemyTypeAndStartNUSIZ.
+*
+*
+*	Based on the levelArray value.
+*
 	_align	2
 Bank7_SetFlagsORA
 	BYTE	#%01001000
 	BYTE	#%01001000
 *
-*	Type #0: Soul(s), moving from left to right
-*	Type #1: Soul(s), moving from rigth to left
+*	Type #00: Soul(s), moving from left to right
+*	Type #01: Soul(s), moving from rigth to left
 *
-	_align	2
+*	Based on levelArray.
+*
+	_align	8
 Bank7_EnemyTypeAndStartNUSIZ
-	BYTE	#0
-	BYTE	#%00000100
+	BYTE	#%00000000	; One soul on the left 			%10000010
+	BYTE	#%00000100	; One soul on the right			%10000011
+	BYTE	#%00000001	; Two souls on the left (small gap)	%10000100
+	BYTE	#%00000101	; Two souls on the right(small gap)	%10000101
+	BYTE	#%00000010	; Two souls on the left (hugel gap)	%10000110
+	BYTE	#%00000110	; Two souls on the right(huge gap)	%10000111
+	BYTE	#%00000011	; Three souls on the left		%10001000
+	BYTE	#%00000111	; Three souls on the right		%10001001
 
 	_align	1
 Bank7_SpellPictureValsForMessages
@@ -17128,11 +17255,16 @@ Bank7_LevelArrayPointers
 
 	_align	3
 Bank7_LevelArray_1
-	BYTE	#%10000001	; Display a message
+	BYTE	#%10000001	; Display next
 	BYTE	#16
 	BYTE	#%10000011	; Summon a soul from left to right
 	BYTE	#16
 	BYTE	#%10000010	; Summon a soul from right to left
+	BYTE	#8
+	BYTE	#%10000111	; Summons two souls on the right with huge gap
+	BYTE	#2
+	BYTE	#%10000100	; Summons two souls on left (small gap)
+	BYTE	#%10001000	; Summons three souls on left
 
 	BYTE	#127
 	BYTE	#%11111111
