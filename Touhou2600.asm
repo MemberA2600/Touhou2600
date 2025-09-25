@@ -16697,6 +16697,7 @@ Bank7_SkipSecondSprite
 	BNE	Bank7_NoneWasHit
 
 Bank7_FirstHit	
+
 	LDA	temp02
 	STA	DeathX
 
@@ -16720,8 +16721,8 @@ Bank7_FirstHit
 	LDA	EnemySettings
 	LSR
 	LSR
-	TAY
-	LDA	Bank7_PointsOnType,y
+	TAX
+	LDA	Bank7_PointsOnType,x
 	STA	temp07
 
 	LDA	EnemySettings2
@@ -16744,8 +16745,8 @@ Bank7_ThereAreOthers
 	
 	TAY
 	LDA	Bank7_ThereWere2_ChangeX,y
-	
 	STA	temp01
+
 	LDA	EnemyX
 	CLC
 	ADC	temp01
@@ -16766,8 +16767,8 @@ Bank7_ThereWere3
 	STA	EnemySettings
 
 	LDA 	EnemyX
-	SEC
-	SBC	Bank7_SubtractXIf3,y
+	CLC
+	ADC	Bank7_ChangeXIf3,y
 	STA	EnemyX
 
 Bank7_NoneWasHit
@@ -17073,7 +17074,7 @@ Bank7_GetNewNUSIZIf3
 	BYTE	#$01
 
 	_align	3
-Bank7_SubtractXIf3
+Bank7_ChangeXIf3
 	BYTE	#16
 	BYTE	#0
 	BYTE	#0
@@ -17257,6 +17258,9 @@ Bank7_LevelArrayPointers
 Bank7_LevelArray_1
 	BYTE	#%10000001	; Display next
 	BYTE	#16
+
+******	BYTE	#%10001000	; Summons three souls on left
+
 	BYTE	#%10000011	; Summon a soul from left to right
 	BYTE	#16
 	BYTE	#%10000010	; Summon a soul from right to left
