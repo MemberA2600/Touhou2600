@@ -1563,8 +1563,6 @@ Bank1_NotOverMax
 	DEX
 	BPL	Bank1_MaxLoop
 
-
-
 	LDA	eikiSettings2
 	BPL	Bank1_NoHitSound
 
@@ -1576,6 +1574,9 @@ Bank1_NotOverMax
 	LDA	#255
 	STA	temp19
 	JSR	Bank1_SoundPlayer
+
+	BIT	eikiSettings
+	BPL	Bank1_JustAnEnemyDied	
 
 	LDA	LivesAndBombs
 	AND	#$F0
@@ -1620,6 +1621,7 @@ Bank1_WasNotTheLastOne
 	ORA	#%00011111
 	STA	LevelAndCharge
 
+Bank1_JustAnEnemyDied	
 Bank1_NoHitSound
 	LDA	counter
 	AND	#%00000111
@@ -1929,7 +1931,7 @@ Bank1_Return_JumpTable
 *
 *	AUDC0 / AUDC1
 *
-	_align  10
+	_align  11
 Bank1_SoundChannels
 	BYTE	#14
 	BYTE	#3
@@ -1941,10 +1943,11 @@ Bank1_SoundChannels
 	BYTE	#1
 	BYTE	#4
 	BYTE	#15
+	BYTE	#7
 *
 *	Must be between 1-15
 *
-	_align 	10
+	_align 	11
 Bank1_Durations
 	BYTE	#6
 	BYTE	#10
@@ -1956,10 +1959,12 @@ Bank1_Durations
 	BYTE	#13
 	BYTE	#14
 	BYTE	#3
+	BYTE	#10
+
 *
 *	This os the first freq played. Cannot reach above 15.
 *
-	_align	10
+	_align	11
 Bank1_StartFreqs
 	BYTE	#4
 	BYTE	#6
@@ -1971,6 +1976,7 @@ Bank1_StartFreqs
 	BYTE	#14
 	BYTE	#14
 	BYTE	#7
+	BYTE	#3
 *
 *	Low  Nibble: Small counter for one note.
 *	High Nibble: Behaviour of the freq:
@@ -1979,7 +1985,7 @@ Bank1_StartFreqs
 *		     2: DEC (higher the voice)	
 *		     3: Vibratio	
 *
-	_align	10
+	_align	11
 Bank1_EffectSettings
 	BYTE	#$12
 	BYTE	#$33
@@ -1991,6 +1997,7 @@ Bank1_EffectSettings
 	BYTE	#$23
 	BYTE	#$25
 	BYTE	#$21
+	BYTE	#$14
 
 	_align	2
 Bank1_FreqAdder
@@ -2015,7 +2022,7 @@ Bank1_BombsOnDeath
 Bank1_DanmakuSound
 	BYTE	#$89
 	BYTE	#$89
-
+	BYTE	#$8A
 **	_align	4
 **Bank1_Danmaku_Speed_Delay
 **	BYTE	#7
@@ -15495,26 +15502,6 @@ Bank6_Character_Names_ShikiEiki_2
 	BYTE	#%01000101
 	BYTE	#%01110101
 
-	_align	12
-Bank6_Character_Names_Sariel_3
-Bank6_Character_Names_Rumia_3
-Bank6_Character_Names_Reimu_3
-Bank6_Character_Names_Cirno_3
-Bank6_Enemy_Sprite_Empty
-Bank6_Common_Enemy_Death_3
-	BYTE	#%00000000
-	BYTE	#%00000000
-	BYTE	#%00000000
-	BYTE	#%00000000
-	BYTE	#%00000000
-	BYTE	#%00000000
-	BYTE	#%00000000
-	BYTE	#%00000000
-	BYTE	#%00000000
-	BYTE	#%00000000
-	BYTE	#%00000000
-	BYTE	#%00000000
-
 	_align	5
 Bank6_Character_Names_Cirnobyl_3
 	BYTE	#%10011100
@@ -15721,6 +15708,175 @@ Bank6_Soul_Colors
 	byte	#$4a
 	byte	#$48
 
+	_align	12
+Bank6_Skull_Sprite_0
+	byte	#%00000000	
+	byte	#%11000011
+	byte	#%10000001
+	byte	#%00011000
+	byte	#%00100100
+	byte	#%00111100
+	byte	#%01100110
+	byte	#%01011010
+	byte	#%01111110
+	byte	#%00111100
+	byte	#%10000001
+	byte	#%11000011
+
+	_align	12
+Bank6_Skull_Sprite_1
+	byte	#%00000000	
+	byte	#%01100110
+	byte	#%10011001
+	byte	#%10100101
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00111100
+	byte	#%01100110
+	byte	#%01011010
+	byte	#%11111111
+	byte	#%10111101
+	byte	#%01100110
+	byte	#%00000000	
+
+	_align	12
+Bank6_Skull_Sprite_2
+	byte	#%00100100
+	byte	#%01100110
+	byte	#%11011011
+	byte	#%00111100
+	byte	#%01100110
+	byte	#%01011010
+	byte	#%01111110
+	byte	#%00111100
+	byte	#%11000011
+	byte	#%01100110
+	byte	#%00100100
+
+
+	_align	12
+Bank6_Skull_Colors
+	byte	#$9E
+	byte	#$9C
+	byte	#$9A
+	byte	#$AC
+	byte	#$AE
+	byte	#$AE
+	byte	#$AE
+	byte	#$AE
+	byte	#$AC
+	byte	#$9A
+	byte	#$9C
+	byte	#$9E
+
+	_align	24
+Bank6_Ghost_Sprite_0
+	byte	#%00001000	
+	byte	#%00010000
+	byte	#%00011000
+	byte	#%01001010
+	byte	#%01011010
+	byte	#%01111110
+	byte	#%00111100
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%01100110
+	byte	#%01011010
+	byte	#%00111100
+Bank6_Character_Names_Sariel_3
+Bank6_Character_Names_Rumia_3
+Bank6_Character_Names_Reimu_3
+Bank6_Character_Names_Cirno_3
+Bank6_Enemy_Sprite_Empty
+Bank6_Common_Enemy_Death_3
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+
+	_align	12
+Bank6_Ghost_Sprite_1
+	byte	#%00011000	
+	byte	#%00100000
+	byte	#%00110000
+	byte	#%00011000
+	byte	#%00011000
+	byte	#%00111100
+	byte	#%01111100
+	byte	#%11011011
+	byte	#%00100100
+	byte	#%01111110
+	byte	#%01011010
+	byte	#%00111100
+
+	_align	12
+Bank6_Ghost_Sprite_2
+	byte	#%00001100	
+	byte	#%00011010
+	byte	#%00110000
+	byte	#%00111000
+	byte	#%00111000
+	byte	#%10111101
+	byte	#%11100111
+	byte	#%00100100
+	byte	#%01111110
+	byte	#%01011010
+	byte	#%00111100
+	byte	#%00000000
+
+	_align	19
+Bank6_Ghost_Sprite_3
+	byte	#%01110000	
+	byte	#%11000000
+	byte	#%11100000
+	byte	#%01111000
+	byte	#%00100100
+	byte	#%00100100
+	byte	#%11100111
+	byte	#%10111101
+	byte	#%01011010
+	byte	#%01111110
+	byte	#%00111100
+	byte	#%00000000
+
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+	byte	#%00000000
+*	byte	#%00000000
+*	byte	#%00000000
+*	byte	#%00000000
+*	byte	#%00000000
+*	byte	#%00000000
+*	byte	#%00000000
+
+	_align	12
+Bank6_Ghost_Colors
+	byte	#$12
+	byte	#$14
+	byte	#$16
+	byte	#$18
+	byte	#$1A
+	byte	#$1C
+	byte	#$1E
+	byte	#$1E
+	byte	#$1C
+	byte	#$1A
+	byte	#$18
+	byte	#$16
+
 ###End-Bank6
 
 
@@ -15824,9 +15980,10 @@ start_bank6
 *
 *	Can be used for harder-to-dodge all purpose shoots.
 *
-*
-*
-*
+*	Danmaku Type	#3:
+*	--------------------
+*	A spreadshot of five single danmaku. The shape if fixed, based on the Y.
+*	Has a value of 3. Extra settings don't matter at all.
 *
 
 *Bank7_TestDanmakuAdd
@@ -15865,9 +16022,13 @@ start_bank6
 *
 *	JMP	Bank7_AddDanmaku
 
+
+*
+*	temp01: Type and Y.
+*	If temp08 =  255, just fall directly down.
+*	If temp09 != 0, dont randomize the caster.
+*
 Bank7_SummonedAtEnemyX
-	LDA	#$1F
-	STA	temp01
 
 **	LDA	#36
 **	STA	temp04
@@ -15886,6 +16047,17 @@ Bank7_SummonedAtEnemyX
 	LDA	Bank7_EnemyNUSIZDanmakuXPointers+1,y
 	STA	temp06
 
+	LDY	temp09
+	CPY	#0	
+	BEQ	Bank7_RandomShoot
+	
+	DEY
+
+	LDA	#36	
+	CLC
+	SBC	Bank7_EnemyPlainDanmakuX,y
+	JMP	Bank7_NoRandomShoot
+Bank7_RandomShoot
 	JSR	Bank7_CallRandom	
 	AND	#3
 	TAY
@@ -15893,6 +16065,7 @@ Bank7_SummonedAtEnemyX
 	LDA	#36	
 	CLC
 	SBC	(temp05),y
+Bank7_NoRandomShoot
 	STA	temp04
 
 	JMP	Bank7_WasNoBossNope
@@ -15919,7 +16092,15 @@ Bank7_WasNoBossNope
 Bank7_SeemsLikeOK2Me
 	STA	temp02
 
+	LDA	temp08
+	CMP	#255
+	BNE	Bank7_Calculate_Angle
+
+	LDA	#$80
+	JMP	Bank7_Fixed_Angle
+Bank7_Calculate_Angle
 	JSR	Bank7_Fall_On_Eiki
+Bank7_Fixed_Angle
 
 	ORA	temp02
 	STA	temp02
@@ -15984,6 +16165,7 @@ Bank7_EikiX_To_PFx
 
 	RTS
 
+	JMP	Bank7_ReturnFromAnything
 *
 *	temp01 and temp02 contains the exact data!
 *
@@ -16087,15 +16269,28 @@ Bank7_StillHaveSomeLeft
 	CMP	#0
 	BEQ	Bank7_HandleNextOne
 
-	CMP	#$10
-	BEQ	Bank7_DanmakuType1
+	LSR
+	LSR
+	LSR
+	TAY
+	
+	LDA	Bank7_DanmakuType_Pointers,y
+	STA	temp01
 
-	CMP	#$20
-	BNE	Bank7_Not_DanmakuType2
-	JMP	Bank7_DanmakuType2
+	LDA	Bank7_DanmakuType_Pointers+1,y
+	STA	temp02
 
-Bank7_Not_DanmakuType2
-	JMP	Bank7_HandleNextOne
+	JMP 	(temp01)
+
+*	CMP	#$10
+*	BEQ	Bank7_DanmakuType1
+*
+*	CMP	#$20
+*	BNE	Bank7_Not_DanmakuType2
+*	JMP	Bank7_DanmakuType2
+*
+*Bank7_Not_DanmakuType2
+*	JMP	Bank7_HandleNextOne
 
 Bank7_DanmakuType1
 	CLC
@@ -16113,7 +16308,7 @@ Bank7_DanmakuType1
 
 	LDA	counter
 	AND	Bank7_Danmaku_Speed_Delay,y
-	CMP	Bank7_Danmaku_Speed_Delay,y
+	CMP	Bank7_Danmaku_Speed_Delay2,y
 	BEQ	Bank7_DoNoJustDrawIt
 
 Bank7_JustDrawItPrep
@@ -16139,6 +16334,9 @@ Bank7_DoNoJustDrawIt
 
 	TAY
  
+	LDA	#1
+	STA	temp09
+
 	LDA	Bank7_DanmakuType1_MoveX,y
 	STA	temp01
 
@@ -16180,8 +16378,26 @@ Bank7_DoNoJustDrawIt
 Bank7_JustDrawIt
 	JSR	Bank7_DisplayDanmakuPixel
 	JMP	Bank7_HandleNextOne
-
+*
+*	If temp09 = 255: Read the value.
+*
 Bank7_RemoveDanmaku
+
+	LDA	temp09
+	CMP	#0
+	BNE	Bank7_RemoveDanmakuSkip
+
+	LDA	Danmaku_SettingsW,x
+
+	LSR
+	LSR
+	LSR
+	LSR
+	TAY
+
+	LDA	Bank7_Danmaku_Value,y
+	STA	temp09
+Bank7_RemoveDanmakuSkip
 
 	LDA	#0
 	STA	Danmaku_SettingsW,x
@@ -16189,8 +16405,10 @@ Bank7_RemoveDanmaku
 
 	LDA	Danmaku_NumR
 	SEC
-	SBC	#1
+	SBC	temp09
 	STA	Danmaku_NumW
+
+	INC	$F1
 
 	JMP	Bank7_HandleNextOne
 
@@ -16211,7 +16429,7 @@ Bank7_DanmakuType2
 Bank7_DanTyp2_CheckOnCounter
 	LDA	counter
 	AND	Bank7_Danmaku_Speed_Delay,y
-	CMP	Bank7_Danmaku_Speed_Delay,y
+	CMP	Bank7_Danmaku_Speed_Delay2,y
 	BEQ	Bank7_DoNoJustDrawIt_2
 	JMP	Bank7_JustDrawItPrep
 
@@ -16370,6 +16588,102 @@ Bank7_Follow_Eiki_DontChangeX
 	JSR	Bank7_DisplayDanmakuPixel
 	JMP	Bank7_HandleNextOne
 
+Bank7_DanmakuType3
+*
+*	Danmaku_Settings:
+*	-----------------
+*	0-3: Danmaku Y (0-16)
+*	4-7: Danmaku Type (we can have 15 types)
+*
+*	Danmaku_Poz:
+*	------------
+*	0-4: Danmaku X (0-32)
+*	5-7: Danmaku Extra Settings
+*
+	CLC
+	LDA	eikiY
+	AND	#%11000000
+	ROL
+	ROL
+	ROL
+	TAY
+
+	LDA	Danmaku_SettingsR,x
+	STA	temp06
+
+	LDA	counter
+	AND	Bank7_Danmaku_Speed_Delay,y
+	CMP	Bank7_Danmaku_Speed_Delay2,y
+	BNE	Bank7_DanmakuType3_C_1
+	
+	LDA	temp06
+	SEC
+	SBC	#1
+	CMP	#$2F
+	BNE	Bank7_DanmakuType3_C
+
+	LDA	#3
+	STA	temp09
+
+	JMP	Bank7_RemoveDanmaku
+
+Bank7_DanmakuType3_C
+	STA	temp06
+Bank7_DanmakuType3_C_1
+	LDA	Danmaku_SettingsR,x
+	AND	#$0F
+	STA	temp08
+
+	LDA	#15
+	SEC
+	SBC	temp08
+	STA	temp16
+
+	LDA	#1
+	STA	temp10
+
+	LDA	Danmaku_PozR,x
+	AND	#%00011111
+	STA	temp07
+	STA	temp09
+	
+	JSR	Bank7_DisplayDanmakuPixel
+
+Bank7_DanmakuType3_Loop
+	LDA	temp07	
+	SEC
+	SBC	temp16
+	STA	temp09
+
+	CMP	#32
+	BCS	Bank7_Skip_Danmaku3_0
+
+	JSR	Bank7_DisplayDanmakuPixel
+Bank7_Skip_Danmaku3_0
+
+	LDA	temp07	
+	CLC
+	ADC	temp16
+	STA	temp09
+
+	CMP	#32
+	BCS	Bank7_Skip_Danmaku3_1
+
+	JSR	Bank7_DisplayDanmakuPixel
+Bank7_Skip_Danmaku3_1
+
+	DEC	temp10
+	BMI	Bank7_DanmakuType3_Loop_End
+
+	ASL	temp16
+	JMP	Bank7_DanmakuType3_Loop
+
+Bank7_DanmakuType3_Loop_End
+	LDA	temp06
+	STA	Danmaku_SettingsW,x
+
+	JMP	Bank7_HandleNextOne
+
 *
 *	Inputs: temp08: Y, temp09: X
 *	Indicator X should not be used!
@@ -16492,8 +16806,15 @@ Bank7_NotAMessageToBeDisplayed
 	SBC	#2
 	TAY
 
-	LDA	Bank7_Boss_Flag,y
-	BPL	Bank7_No_Boss_Summoned
+*
+* X >= Y
+*
+* LDA	X
+* CMP	Y
+* BCC 	else
+*		
+	CPY	#120
+	BCC	Bank7_No_Boss_Summoned
 	JMP	Bank7_Set_Boss_Things
 Bank7_No_Boss_Summoned
 	LDA	NewLoadDelay
@@ -16544,8 +16865,30 @@ StartOnTheRight = 158
 
 	LDA	Bank7_StartX,y
 	CMP	#0
-	BNE	Bank7_JustSaveX
+	BEQ	Bank7_ItsOnTheLeft
 
+	CMP	#255
+	BNE	Bank7_JustSaveX
+*
+*	These ones should be NUSIZ = $00 by default.
+*
+	JSR	Bank7_CallRandom
+	AND	#127
+	CLC
+	ADC	#31
+
+* CMP	Y
+* BCS   else 
+
+	CMP	#40
+	BCS	Bank7_RandomXLargerThan41
+	
+	LDA	#40
+	JMP	Bank7_JustSaveX
+Bank7_RandomXLargerThan41
+	JMP	Bank7_JustSaveX
+
+Bank7_ItsOnTheLeft
 	LDY	temp01
 	LDA	Bank7_StartXOnTheLeftBasedOnNUSIZ,y
 
@@ -16603,7 +16946,7 @@ Bank7_EikiWouldHit
 *	
 *	Output:
 *	--------------
-*	Y: 0 if nope, 255 if OK
+*	Y: 0 if nope, no changeIfOK
 *
 
 	LDA	eikiX
@@ -16717,6 +17060,8 @@ Bank7_FirstHit
 *
 *	Points:	 
 *	-Red Soul:	100
+*	-Skull:		200
+*	-Ghost:		300
 *
 	LDA	EnemySettings
 	LSR
@@ -16779,6 +17124,7 @@ Bank7_ContinueAsUsual
 	LDA 	EnemySettings
 	LSR
 	LSR
+	STA	temp09
 	ASL
 	TAY
 
@@ -16792,10 +17138,6 @@ Bank7_Behavour_0
 
 ReverseRandomNum = 130
 ShootRandomNum = 165
-
-	TYA
-	LSR
-	STA	temp09
 
 	CLC
 *
@@ -16996,6 +17338,13 @@ Bank7_NoChangeInSettings
 	ORA	#%01000000
 	STA	EnemySettings2
 
+	LDA	#0
+	STA	temp08
+	STA	temp09
+
+	LDA	#$1F
+	STA	temp01
+
 	JMP	Bank7_SummonedAtEnemyX
 Bank7_NoNewDanmakuBe0
 
@@ -17014,9 +17363,306 @@ Bank7_NoNewDanmakuBe0
 
 	JMP	Bank7_ReturnFromAnything
 
+Bank7_Behavour_1
+*EnemySettings2 = $C6
+*
+*	0-1: Explosion Sprite Counter
+*	  2: CheckForScore Flag
+*	3-5: Free to use counter
+*	6-7: Free to use state
+* 
+
+	CLC
+
+	LDA	eikiY
+	AND	#%11000000
+	ROL
+	ROL
+	ROL
+	TAX	
+
+	LDA	counter
+	AND	#1
+	CMP	#1
+	BEQ	Bank7_SkullSMove
+	JMP	Bank7_Behavour_1_Gone
+
+Bank7_SkullSMove
+
+	LDY	temp09
+	CPY	#2
+
+	BNE	Bank7_Behavour_1_Go_DEC
+	
+	LDA	EnemyX
+	CLC
+	ADC	Bank7_Enemy_Speed_On_Diff,x
+	STA 	EnemyX
+
+	CMP 	#StartOnTheRight
+	BCC	Bank7_Behavour_1_Gone
+	JMP	Bank7_RemoveCommonEnemy
+
+Bank7_Behavour_1_Go_DEC
+
+	LDA	EnemyX
+	SEC
+	SBC	Bank7_Enemy_Speed_On_Diff,x
+	STA 	EnemyX
+	
+	LDA	EnemySettings
+	AND	#3	
+	TAY
+	
+	LDA	Bank7_StartXOnTheLeftBasedOnNUSIZ,y
+	CMP	EnemyX	
+	BCC	Bank7_Behavour_1_Gone
+
+	JMP	Bank7_RemoveCommonEnemy
+
+Bank7_Behavour_1_Gone
+	LDA	eikiSettings
+	AND	#3
+	ASL
+	TAY	
+	
+	LDA	Bank7_Skull_Sprite_Pointers,y
+	STA 	EnemySpritePointer
+	LDA	Bank7_Skull_Sprite_Pointers+1,y
+	STA 	EnemySpritePointer+1
+
+	LDA	#<Bank6_Skull_Colors
+	STA 	EnemyColorPointer
+	LDA	#>Bank6_Skull_Colors
+	STA 	EnemyColorPointer+1
+
+	LDA	EnemySettings2
+	AND	#%00111000
+	CMP	#0
+	BEQ	Bank7_SkullsCanShoot	
+
+	LDA	counter
+	AND	#1
+	CMP	#1
+	BNE	Bank7_NoSkullShot
+
+	LDA	EnemySettings2
+	SEC
+	SBC	#%00001000
+	STA	EnemySettings2
+
+	JMP	Bank7_NoSkullShot
+Bank7_SkullsCanShoot
+	LDA	EnemySettings
+	AND	#3
+	STA	temp04
+
+	LDA	#8
+	STA	temp03
+
+	LDA	#0
+	STA	temp05
+
+	LDA	EnemyX
+	STA	temp02
+
+	LDY	#1
+	JSR	Bank7_EikiWouldHit
+	CPY	#1		
+	BEQ	Bank7_Skull_EnemyShoots
+
+	LSR	temp04
+	BCC	Bank7_NoSecondSkull
+
+	LDA	EnemyX
+	CLC
+	ADC	#16	
+	STA	temp02
+
+	LDY	#2
+	JSR	Bank7_EikiWouldHit
+	CPY	#2		
+	BEQ	Bank7_Skull_EnemyShoots
+
+Bank7_NoSecondSkull
+	LSR	temp04
+	BCC	Bank7_NoSkullShot
+
+	LDA	EnemyX
+	CLC
+	ADC	#32	
+	STA	temp02
+
+	LDY	#3
+	JSR	Bank7_EikiWouldHit
+	CPY	#3		
+	BNE	Bank7_NoSkullShot
+
+Bank7_Skull_EnemyShoots
+	LDA	EnemySettings2
+	AND	#%11000111
+	ORA	Bank7_SkullShootCounterOnDiff,x
+	STA	EnemySettings2
+
+	LDA	#255
+	STA	temp08
+	STY	temp09
+
+	LDA	#$1F
+	STA	temp01
+	JMP	Bank7_SummonedAtEnemyX
+
+Bank7_NoSkullShot
+	JMP	Bank7_ReturnFromAnything
+
+Bank7_Behavour_2
+*EnemySettings2 = $C6
+*
+*	0-1: Explosion Sprite Counter
+*	  2: CheckForScore Flag
+*	3-5: Free to use counter
+*	6-7: Free to use state
+* 
+*	Counter is used for rise, sprite animation and sink.
+*	States: 0: Rise, 1: Shoot, 2: Sink
+*
+	LDA	eikiY
+	ROL
+	ROL
+	ROL
+	AND	#3
+	TAY
+
+	LDA	counter
+	AND	Bank7_Counter_Skips,y
+	CMP	Bank7_Counter_Skips,y	
+	BEQ	Bank7_GhostUpdate
+
+	LDA	EnemySettings2
+	AND	#%11000000
+	JMP	Bank7_StillGhost
+
+Bank7_GhostUpdate
+	LDA	EnemySettings2
+	AND	#%00111000
+	CMP	#%00111000
+	BEQ	Bank7_Increment_Ghost_Pointer	
+
+	LDA	EnemySettings2
+	CLC
+	ADC	#%00001000
+	JMP	Bank7_Save_Ghost_Settings
+Bank7_Increment_Ghost_Pointer	
+	LDA	EnemySettings2
+	AND	#%11000111
+	CLC
+	ADC	#%01000000
+Bank7_Save_Ghost_Settings
+	STA	EnemySettings2
+
+	AND	#%11000000
+	CMP	#%11000000
+	BNE	Bank7_StillGhost
+
+	JMP	Bank7_RemoveCommonEnemy
+
+Bank7_StillGhost
+	CLC
+
+	ROL
+	ROL
+	ROL
+	ASL	
+
+	TAY
+
+	LDA	#<Bank6_Ghost_Colors
+	STA	EnemyColorPointer
+
+	LDA	#>Bank6_Ghost_Colors
+	STA	EnemyColorPointer+1
+
+	LDA	Bank7_Ghost_Pointers,y
+	STA	temp01
+
+	LDA	Bank7_Ghost_Pointers+1,y
+	STA	temp02	
+	
+	JMP	(temp01),y
+
+Bank7_Ghost_Behave_0
+	LDA	EnemySettings2
+	AND	#%00111000
+	LSR
+	LSR
+	LSR
+	STA	temp01
+
+	LDA	#11
+	SEC
+	SBC 	temp01
+	STA	temp01
+
+	LDA	#>Bank6_Ghost_Sprite_0
+	STA	EnemySpritePointer+1
+	
+	LDA	#<Bank6_Ghost_Sprite_0
+	CLC
+	ADC	temp01
+	STA	EnemySpritePointer
+
+	JMP	Bank7_ReturnFromAnything
+
+Bank7_Ghost_Behave_1
+	LDA	EnemySettings2
+	AND	#%00110000
+	LSR
+	LSR
+	LSR
+	TAY
+
+	LDA	Bank7_Ghost_Sprite_Pointers,y
+	STA	EnemySpritePointer
+
+	LDA	Bank7_Ghost_Sprite_Pointers+1,y
+	STA	EnemySpritePointer+1
+
+	LDA	EnemySettings2
+	AND	#%00111000
+	CMP	#%00111000
+	BNE	Bank7_Ghost_Behave_1_No_Danmaku
+
+	LDY	#1
+	LDA	#255
+	STA	temp08
+	STY	temp09
+
+	LDA	#$3F
+	STA	temp01
+	JMP	Bank7_SummonedAtEnemyX
+Bank7_Ghost_Behave_1_No_Danmaku
+	JMP	Bank7_ReturnFromAnything
+
+Bank7_Ghost_Behave_2
+	LDA	EnemySettings2
+	AND	#%00111000
+	LSR
+	LSR
+	LSR
+	STA	temp01
+
+	LDA	#>Bank6_Ghost_Sprite_3
+	STA	EnemySpritePointer+1
+	
+	LDA	#<Bank6_Ghost_Sprite_3
+	CLC
+	ADC	temp01
+	STA	EnemySpritePointer
+
+	JMP	Bank7_ReturnFromAnything
+
+
 Bank7_HandleTheBoss
-
-
 
 	JMP	Bank7_ReturnFromAnything
 
@@ -17038,8 +17684,9 @@ Bank7_CallRandom
 *	-------
 *	000: 	End of Level
 *	001: 	Display a character message based on MessagePointer. The pointer is incremented after afterwards.
-*	002: 	Summons a basic soul enemy on the right
-*	003: 	Summons a basic soul enemy on the left
+*
+*	002: 	Summons a basic soul enemy on the right	
+*	003: 	Summons a basic soul enemy on the left	
 *	004: 	Summons two basic souls close on the right
 *	005: 	Summons two basic souls close on the left
 *	006: 	Summons two basic souls with a gap on the right
@@ -17047,6 +17694,22 @@ Bank7_CallRandom
 *	008: 	Summons three basic souls the right
 *	009: 	Summons three basic souls the left
 *
+*	010:	Summons two skulls with small gap on the right
+*	011:	Summons two skulls with small gap on the left
+*	012:	Summons two skulls with large gap on the right
+*	013:	Summons two skulls with large gap on the left
+*	014:	Summons three skulls on the right
+*	015:	Summons three skulls on the left
+*
+*	016:	Summons a ghost at random
+*
+*	120: 	Summons Komachi
+*	121:	Summons Cirno
+*	122: 	Summons Marisa
+*	123:	Summons Reimu
+*	124:	Summons Cirnobyl
+*	125:	Summons Rumia
+*	126:	Summons Sariel
 *
 *	127:    Init LevelCounter to Zero (only for testing)
 *
@@ -17058,7 +17721,7 @@ Bank7_CallRandom
 *	 03:	Marisa
 *	 04:	Reimu
 *	 05: 	Cirnobyl
-*	 06:	Rukia
+*	 06:	Rumia
 *	 07:	Sariel
 *
 
@@ -17066,6 +17729,51 @@ Bank7_CallRandom
 *
 *	Data Section
 *
+
+	_align	8
+Bank7_DanmakuType_Pointers
+	BYTE	#0
+	BYTE	#0
+	BYTE	#<Bank7_DanmakuType1
+	BYTE	#>Bank7_DanmakuType1
+	BYTE	#<Bank7_DanmakuType2
+	BYTE	#>Bank7_DanmakuType2
+	BYTE	#<Bank7_DanmakuType3
+	BYTE	#>Bank7_DanmakuType3
+
+	_align	8
+Bank7_Ghost_Sprite_Pointers
+	BYTE	#<Bank6_Ghost_Sprite_0
+	BYTE	#>Bank6_Ghost_Sprite_0
+	BYTE	#<Bank6_Ghost_Sprite_1
+	BYTE	#>Bank6_Ghost_Sprite_1
+	BYTE	#<Bank6_Ghost_Sprite_2
+	BYTE	#>Bank6_Ghost_Sprite_2
+	BYTE	#<Bank6_Ghost_Sprite_3
+	BYTE	#>Bank6_Ghost_Sprite_3
+
+	_align	6
+Bank7_Ghost_Pointers
+	BYTE	#<Bank7_Ghost_Behave_0
+	BYTE	#>Bank7_Ghost_Behave_0
+	BYTE	#<Bank7_Ghost_Behave_1
+	BYTE	#>Bank7_Ghost_Behave_1
+	BYTE	#<Bank7_Ghost_Behave_2
+	BYTE	#>Bank7_Ghost_Behave_2
+
+	_align	4
+Bank7_SkullShootCounterOnDiff
+	BYTE	#%00111000
+	BYTE	#%00100000
+	BYTE	#%00010000
+	BYTE	#%00001000
+
+	_align	4
+Bank7_Enemy_Speed_On_Diff
+	BYTE	#1
+	BYTE	#2
+	BYTE	#2
+	BYTE	#3
 
 	_align	3
 Bank7_GetNewNUSIZIf3
@@ -17094,6 +17802,15 @@ Bank7_Soul_Sprite_Pointers
 	BYTE	#<Bank6_Common_Enemy_Soul_2
 	BYTE	#>Bank6_Common_Enemy_Soul_2
 
+	_align	6
+Bank7_Skull_Sprite_Pointers
+	BYTE	#<Bank6_Skull_Sprite_0
+	BYTE	#>Bank6_Skull_Sprite_0
+	BYTE	#<Bank6_Skull_Sprite_1
+	BYTE	#>Bank6_Skull_Sprite_1
+	BYTE	#<Bank6_Skull_Sprite_2
+	BYTE	#>Bank6_Skull_Sprite_2
+
 *
 *	Behaviours:
 *	0: Soul goes slowly from left to right, disappears as it reaches the StartOnTheRight value. 
@@ -17101,7 +17818,12 @@ Bank7_Soul_Sprite_Pointers
 *	1: Soul goes slowly from right to left, disappears as it reaches the left start poz based on NUSIZ. 
 *          Summons a basic danmaku random times. Sprite independent of the direction
 *
+*	2: Skull goes left to right really fast, the one above Eiki shoots a danmaku.
+*	3: Skull goes rigth to left really fast, the one above Eiki shoots a danmaku.
 *
+*	4: Ghost appears at random X, rising, shoots a spreadshot, then sinks back.
+*
+
 	_align	8
 Bank7_EnemyNUSIZDanmakuXPointers
 	BYTE	#<Bank7_EnemyNUSIZDanmakuX_00
@@ -17151,6 +17873,11 @@ Bank7_EnemyNUSIZDanmakuX_03
 	BYTE	#32
 	BYTE	#16
 
+	_align	3
+Bank7_EnemyPlainDanmakuX
+	BYTE	#0
+	BYTE	#16
+	BYTE	#32
 
 	_align	4  
 Bank7_FakeRandoms_0
@@ -17173,12 +17900,20 @@ Bank7_SecondNumForCMPOnNUSIZ
 	BYTE	#157
 	BYTE	#149
 
-	_align	2
+	_align	10
 Bank7_BehavePointers
 	BYTE	#<Bank7_Behavour_0
 	BYTE	#>Bank7_Behavour_0
 	BYTE	#<Bank7_Behavour_0
 	BYTE	#>Bank7_Behavour_0
+
+	BYTE	#<Bank7_Behavour_1
+	BYTE	#>Bank7_Behavour_1
+	BYTE	#<Bank7_Behavour_1
+	BYTE	#>Bank7_Behavour_1
+
+	BYTE	#<Bank7_Behavour_2
+	BYTE	#>Bank7_Behavour_2
 
 	_align	4
 Bank7_StartXOnTheLeftBasedOnNUSIZ
@@ -17186,35 +17921,28 @@ Bank7_StartXOnTheLeftBasedOnNUSIZ
 	BYTE	#17
 	BYTE	#1
 	BYTE	#1
-*
-*	Based on the levelArray value.
-*
-	_align	8
-Bank7_Boss_Flag
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
-	BYTE	#0
+
+	_align  4
+Bank7_PointsOnType
+	BYTE	#1
+	BYTE	#1
+	BYTE	#2
+	BYTE	#3
 
 *
 *	If 0, start on the left depending on NUSIZ
+*	If 255, calculate random.
 *
 *	Based on EnemyTypeAndStartNUSIZ.
 *
 
-	_align  2
-Bank7_PointsOnType
-	BYTE	#1
-	BYTE	#1
-
-	_align  2
+	_align  5
 Bank7_StartX
  	BYTE	#0
  	BYTE	#StartOnTheRight
+ 	BYTE	#0
+ 	BYTE	#StartOnTheRight
+	BYTE	#255
 *
 *	Bit 3: Auto Increment of Landscape
 *	Bit 6: Hold Increment of EventPointer
@@ -17224,26 +17952,39 @@ Bank7_StartX
 *
 *	Based on the levelArray value.
 *
-	_align	2
+	_align	5
 Bank7_SetFlagsORA
 	BYTE	#%01001000
 	BYTE	#%01001000
+	BYTE	#%01001000
+	BYTE	#%01001000
+	BYTE	#%01001000
 *
-*	Type #00: Soul(s), moving from left to right
-*	Type #01: Soul(s), moving from rigth to left
+*	Type #00: Soul(s), 	moving from left to right
+*	Type #01: Soul(s), 	moving from rigth to left
+*	Type #02: Skulls,  	moving from left to right
+*	Type #03: Skulls, 	moving from rigth to left
+*	Type #04: Ghost		appear at random, rises and sinks
 *
 *	Based on levelArray.
 *
-	_align	8
+	_align	14
 Bank7_EnemyTypeAndStartNUSIZ
-	BYTE	#%00000000	; One soul on the left 			%10000010
-	BYTE	#%00000100	; One soul on the right			%10000011
-	BYTE	#%00000001	; Two souls on the left (small gap)	%10000100
-	BYTE	#%00000101	; Two souls on the right(small gap)	%10000101
-	BYTE	#%00000010	; Two souls on the left (hugel gap)	%10000110
-	BYTE	#%00000110	; Two souls on the right(huge gap)	%10000111
-	BYTE	#%00000011	; Three souls on the left		%10001000
-	BYTE	#%00000111	; Three souls on the right		%10001001
+	BYTE	#%00000000	; One soul on the left 			%10000010	1
+	BYTE	#%00000100	; One soul on the right			%10000011	1
+	BYTE	#%00000001	; Two souls on the left (small gap)	%10000100	3	
+	BYTE	#%00000101	; Two souls on the right(small gap)	%10000101	0
+	BYTE	#%00000010	; Two souls on the left (huge gap)	%10000110	0
+	BYTE	#%00000110	; Two souls on the right(huge gap)	%10000111	1
+	BYTE	#%00000011	; Three souls on the left		%10001000	1
+	BYTE	#%00000111	; Three souls on the right		%10001001	1
+	BYTE	#%00001001	; Two skulls on the left (small gap)	%10001010	1
+	BYTE	#%00001101	; Two skulls on the right (small gap)	%10001011	1
+	BYTE	#%00001010	; Two skulls on the left (huge gap)	%10001100	2
+	BYTE	#%00001110	; Two skulls on the right (huge gap)	%10001101	1
+	BYTE	#%00001011	; Three skulls on the left 		%10001110	1
+	BYTE	#%00001111	; Three skulls on the right 		%10001111	1
+	BYTE	#%00010000	; Ghost summoned at random		%10010000	3 	
 
 	_align	1
 Bank7_SpellPictureValsForMessages
@@ -17254,12 +17995,14 @@ Bank7_LevelArrayPointers
 	BYTE	#<Bank7_LevelArray_1
 	BYTE	#>Bank7_LevelArray_1
 
-	_align	3
+	_align	128
 Bank7_LevelArray_1
 	BYTE	#%10000001	; Display next
 	BYTE	#16
 
-******	BYTE	#%10001000	; Summons three souls on left
+****	Testing
+**	BYTE	#%10010000	; Ghost summoned at random
+**	BYTE	#32
 
 	BYTE	#%10000011	; Summon a soul from left to right
 	BYTE	#16
@@ -17269,15 +18012,34 @@ Bank7_LevelArray_1
 	BYTE	#2
 	BYTE	#%10000100	; Summons two souls on left (small gap)
 	BYTE	#%10001000	; Summons three souls on left
+	BYTE	#%10001011	; Two skulls on the right (small gap)
+	BYTE	#%10001111	; Three skulls on the right 
+	BYTE	#%10001110	; Three skulls on the left 
+	BYTE	#%10001100	; Two skulls on the left (huge gap)	
+	BYTE	#%10001001	; Three souls on the right
+	BYTE	#%10000100	; Two souls on the left (small gap)
+	BYTE	#16
+	BYTE	#%10010000	; Ghost summoned at random
+	BYTE	#8
+	BYTE	#%10010000	; Ghost summoned at random
+	BYTE	#4
+	BYTE	#%10010000	; Ghost summoned at random
+	BYTE	#%10001101	; Two skulls on the right (huge gap)
+	BYTE	#%10001100	; Two skulls on the left (huge gap)
+	BYTE	#%10001001	; Three souls on the right
+	BYTE	#%10000100	; Summons two souls on left (small gap)
+	BYTE	#%10010000	; Ghost summoned at random
+	BYTE	#%10010000	; Ghost summoned at random
 
 	BYTE	#127
-	BYTE	#%11111111
+	BYTE	#%11111111	; Test Reset
 
-	_align	3
+	_align	4
 Bank7_DanmakuSound
 	BYTE	#0
 	BYTE	#%00010000
 	BYTE	#%00010000
+	BYTE	#%00100000
 
 	_align	9
 Bank7_Danmaku_Type2_Morph
@@ -17299,6 +18061,13 @@ Bank7_Danmaku_Speed_Delay
 	BYTE	#3
 	BYTE	#3
 	BYTE	#1
+
+	_align	4
+Bank7_Danmaku_Speed_Delay2
+	BYTE	#6
+	BYTE	#2
+	BYTE	#2
+	BYTE	#0
 
 	_align	4
 Bank7_DanmakuPixelORA_Pointers
@@ -17366,11 +18135,12 @@ Bank7_DanmakuType1_MoveY
 	BYTE	#0
 	BYTE	#1
 
-	_align	3
+	_align	4
 Bank7_Danmaku_Value
 	BYTE	#0
 	BYTE	#1
 	BYTE	#2
+	BYTE	#3
 
 	_align	4
 Bank7_Max_Number_Of_Danmaku
@@ -18727,6 +19497,8 @@ Bank8_setFine
 *	temp19: Eiki's Y
 *
 	
+	STA	CXCLR
+
 	LDA	eikiSettings
 	AND	#%00001100
 	LSR					 
@@ -18880,8 +19652,10 @@ Bank8_Eiki_Before_SecondLine
 	BCC	Bank8_NoEiki_StayHere 	; 2 (29)
 
 	LDY	#Eiki_HeightPlus1	; 2 (31)
-	STA	CXCLR			; 3 (34)
-	sleep	2
+**	STA	CXCLR			; 3 (34)
+**	sleep	2
+	LDA	#0
+	STA	ENAM1
 	JMP	Bank8_GoForEiki		; 3 (39)
 ***	JMP	Bank8_ResetThings
 Bank8_NoEiki_StayHere
@@ -18954,10 +19728,10 @@ Bank8_Eiki_Loop_Secondline
 	LDA	Danmaku_Col_2R,x
 	STA	PF2		; 7 (29)	
 
-****	sleep	7
-	LDA	#0
-	STA	ENAM1
-	sleep	2
+	sleep	7
+**	LDA	#0
+**	STA	ENAM1
+**	sleep	2
 
 Bank8_GoForEiki	
 
