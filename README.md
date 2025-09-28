@@ -11,5 +11,5 @@ The game itself utilizes <i>32K ROM</i> and <i>128 bytes of SARA RAM</i>, so bas
 Here you can see a short footage of the Main Menu and the intro:<br><br>
 
 <a href="https://www.youtube.com/watch?v=7aUCR5kEcV4"><img src="https://img.youtube.com/vi/7aUCR5kEcV4/0.jpg" alt="Screenshot" width="480"/></a>
-<a href="https://www.youtube.com/watch?v=NP3XXCb_J5I"><img src="https://img.youtube.com/vi/NP3XXCb_J5I/0.jpg" alt="Screenshot" width="480"/></a>
+<a href="https://www.youtube.com/watch?v=CKtZf3g8B_Y"><img src="https://img.youtube.com/vi/CKtZf3g8B_Y/0.jpg" alt="Screenshot" width="480"/></a>
 
