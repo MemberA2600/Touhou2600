@@ -252,10 +252,11 @@ BossHP = $BF
 BossSettings = $C0
 *
 *	0-4: Boss State
-*		00: Appear and move to the center
-*		01: Arrived to center, show messages
-*		02: Basic attack
-*	     03-13: Spellcards
+*		00: Sinking LandScape
+*		01: Appear and move to the center
+*		02: Arrived to center, show messages
+*		03: Basic attack
+*	     04-13: Spellcards
 * 		14: Death
 *		15: Showing the endgame screen
 *	5-7: Cooldown
@@ -266,10 +267,16 @@ BossSpriteTablePointer_R_P0 = $C4
 BossSpriteTablePointer_L_P1 = $C6
 BossSpriteTablePointer_R_P1 = $C8
 
-BossSettings2 = $C2
+BossSettings2 = $CA
 *
 *	0-2: Sprite Index
 *	3-5: Messages left
+*	6-7: FREE
+*	
+WastingLinesCounter = $CB
+*
+*	0-4: Counter
+*	6-7: FREE
 *
 
 Eiki_Height = 23
@@ -1756,11 +1763,19 @@ VBlankEndBank1
 *	TestLines should be removed from finished product.
 *
 
-	JSR	Bank1_TestLines
+****	JSR	Bank1_TestLines
+
+BossCorrector = 17
 
 	BIT	MessagePointer
 	BPL	Bank1_NoMessageDisplayed
 	
+	LDX	#BossCorrector 
+Bank1_BossCorr1	
+	STA	WSYNC
+	DEX
+	BPL	Bank1_BossCorr1
+
 	JSR	Bank1_Display_Name
 
 	LDA	MessagePointer
@@ -1780,14 +1795,45 @@ Bank1_NoMessageDisplayed
 
 	BIT 	NewLoadDelay
 	BMI	Bank1_BossModeOn
+
+	LDX	#BossCorrector 
+Bank1_BossCorr2
+	STA	WSYNC
+	DEX
+	BPL	Bank1_BossCorr2
+
 	JSR	Bank1_DrawCommonEnemies
 
 	JMP	Bank1_MoveOnWithMain
 Bank1_BossModeOn
+	LDA	BossSettings
+	AND	#15
+	CMP	#0
+	BNE	Bank1_TrueBossModeOn
+
+	LDA	WastingLinesCounter
+	AND	#$0F
+	TAX
+	LDA	Bank1_VerySpecialCorrectorNumber,x
+	TAX
+
+Bank1_BossCorr3
+	STA	WSYNC
+	DEX
+	BPL	Bank1_BossCorr3
+
+
+	JMP	Bank1_MoveOnWithMain
+Bank1_TrueBossModeOn
+
+
 	JSR	Bank1_DrawBossThings
 
 Bank1_MoveOnWithMain
-	JSR	Bank1_TestLines
+****	JSR	Bank1_TestLine
+
+	LDA	#%00000101
+	STA	CTRLPF
 
 	LDA	ScoreColorAdder
 	AND	#%00001000
@@ -1795,8 +1841,8 @@ Bank1_MoveOnWithMain
 	BNE	Bank1_NoGameOverScreen
 	
 	JSR	Bank1_DisplayDeathScreen
+**	STA	WSYNC
 	STA	WSYNC
-****	STA	WSYNC
 
 	JMP	Bank1_Main_Ended
 
@@ -1809,8 +1855,8 @@ Bank1_NoGameOverScreen
 **	STA	SpellPicture
 
 	JSR	Bank1_DisplaySpellCardFace
+**	STA	WSYNC
 	STA	WSYNC
-***	STA	WSYNC
 
 	JMP	Bank1_Main_Ended
 
@@ -1905,16 +1951,24 @@ Bank1_NoExtraSleeps
 
 Bank1_Main_Ended
 
-*	LDA	#$00
-*	STA	WSYNC
-*	STA	COLUBK
+	LDA	#$00
+	STA	WSYNC
+	STA	COLUPF
+
+	LDA	NewLoadDelay
+	BPL	Bank1_NotABossAtAll
+
+	LDA	BossSettings
+	AND	#%00111111
+	CMP	#0
+	BNE	Bank1_NoLandScapeOnBoss
+Bank1_NotABossAtAll
 
 	JSR	Bank1_LandScape
+Bank1_NoLandScapeOnBoss
+***	JSR	Bank1_TestLines
 	JSR	Bank1_DrawScore
 	JSR	Bank1_LivesAndBombs
-
-***	JSR	Bank1_TestLines
-
 
 	LDA	#0
 	STA	WSYNC		; (76)
@@ -1935,6 +1989,26 @@ Bank1_Main_Ended
 * custom ScreenTop and ScreenBottom
 * elments.
 *
+
+	_align	16
+Bank1_VerySpecialCorrectorNumber
+	BYTE	#44
+	BYTE	#44
+	BYTE	#44
+	BYTE	#44
+	BYTE	#44
+	BYTE	#49
+	BYTE	#49
+	BYTE	#49
+	BYTE	#49
+	BYTE	#53
+	BYTE	#53
+	BYTE	#53
+	BYTE	#56
+	BYTE	#56
+	BYTE	#58
+	BYTE	#59
+
 	_align	1
 Bank1_StartMessageID
 	BYTE	#0
@@ -5871,8 +5945,6 @@ Bank3_Exit_To_Level
    	ldx	#1
    	jmp	bankSwitchJump
 
-
-
 Bank3_IncrementSprite
 	CLC
 	ADC	#%00100000
@@ -9291,6 +9363,166 @@ Bank4_HP_Lines_Loop_Ended
 	STA	PF1
 	STA	PF2
 	STA	HMCLR
+*
+*	temp01:	P0 Pointer
+*	temp03:	P1 Pointer
+*	temp05:	P0 Color Pointer
+*	temp07:	P1 Color Pointer
+*
+*
+
+	STA	NUSIZ0
+	STA	NUSIZ1
+
+	LDA	counter
+	AND	#1
+	TAX
+
+	LDA	EnemyX
+	CLC
+	ADC	Bank4_Shift8_P0,x
+	STA	temp15
+
+	LDA	EnemyX
+	CLC
+	ADC	Bank4_Shift8_P1,x
+	STA	temp16
+
+	LDX	#1
+Bank4_NextHorPoz
+	STA	WSYNC
+	LDA	temp15,x
+Bank4_DivideLoop
+	sbc	#15
+   	bcs	Bank4_DivideLoop
+   	sta	temp15,X
+   	sta	RESP0,X	
+	DEX
+	BPL	Bank4_NextHorPoz	
+
+	ldx	#1
+Bank4_setFine
+   	lda	temp15,x
+	CLC
+	ADC	#16
+	TAY
+   	lda	Bank4_FineAdjustTable,y
+   	sta	HMP0,x		
+	DEX
+	BPL	Bank4_setFine
+
+
+	STA	WSYNC
+	STA	HMOVE
+
+	LDA 	LevelAndCharge
+	AND	#%11000000
+	LSR
+	LSR
+	LSR
+	LSR
+	LSR
+	TAY
+	
+	LDA	counter
+	AND	#1
+	TAX
+
+	CPX	#1
+	BNE	Bank4_Boss_EvenFrame
+
+Bank4_Boss_Odd_Frame
+	LDA	Bank4_Boss_Color_P0_R_Pointer,y
+	STA	temp05
+
+	LDA	Bank4_Boss_Color_P0_R_Pointer+1,y
+	STA	temp06
+
+	LDA	Bank4_Boss_Color_P1_L_Pointer,y
+	STA	temp07
+
+	LDA	Bank4_Boss_Color_P1_L_Pointer+1,y
+	STA	temp08
+
+	LDA	BossSettings2
+	AND	#7
+	ASL
+	TAY	
+	
+	LDA	(BossSpriteTablePointer_R_P0),y
+	STA	temp01
+	
+	LDA	(BossSpriteTablePointer_L_P1),y
+	STA	temp03
+
+	INY	
+
+	LDA	(BossSpriteTablePointer_R_P0),y
+	STA	temp02
+	
+	LDA	(BossSpriteTablePointer_L_P1),y
+	STA	temp04
+	
+	JMP	Bank4_Was_Boss_Odd_Frame
+
+Bank4_Boss_EvenFrame
+	LDA	Bank4_Boss_Color_P0_L_Pointer,y
+	STA	temp05
+
+	LDA	Bank4_Boss_Color_P0_L_Pointer+1,y
+	STA	temp06
+
+	LDA	Bank4_Boss_Color_P1_R_Pointer,y
+	STA	temp07
+
+	LDA	Bank4_Boss_Color_P1_R_Pointer+1,y
+	STA	temp08
+
+	LDA	BossSettings2
+	AND	#7
+	ASL
+	TAY	
+	
+	LDA	(BossSpriteTablePointer_L_P0),y
+	STA	temp01
+	
+	LDA	(BossSpriteTablePointer_R_P1),y
+	STA	temp03
+
+	INY	
+
+	LDA	(BossSpriteTablePointer_L_P0),y
+	STA	temp02
+	
+	LDA	(BossSpriteTablePointer_R_P1),y
+	STA	temp04
+
+Bank4_Was_Boss_Odd_Frame
+
+	LDY	#23
+	LDX	#1
+Bank4_DrawBossLoop
+	STA	WSYNC
+
+	LDA	(temp01),y
+	STA	GRP0
+
+	LDA	(temp03),y
+	STA	GRP1
+
+	LDA	(temp05),y
+	STA	COLUP0
+
+	LDA	(temp07),y
+	STA	COLUP1
+
+	DEX
+	BPL	Bank4_DrawBossLoop
+
+	LDX	#1
+
+	DEY
+	BPL	Bank4_DrawBossLoop
 
 Bank4_DrawBossEnded
 	LDA	#0
@@ -9299,6 +9531,8 @@ Bank4_DrawBossEnded
 	STA	COLUBK
 	STA	HMCLR
 	STA	PF0
+	STA	GRP0
+	STA	GRP1
 
 Bank4_ReturnFromAnything
 	LDX	temp19
@@ -9327,6 +9561,36 @@ Bank4_ReturnNoRTS
 *
 *	Data Section
 *
+	_align	2
+
+Bank4_Shift8_P0
+	BYTE	#0
+	BYTE	#8
+
+	_align	2
+
+Bank4_Shift8_P1
+	BYTE	#8
+	BYTE	#0
+
+	_align	16
+Bank4_FineAdjustTable
+	byte	#$80
+	byte	#$70
+	byte	#$60
+	byte	#$50
+	byte	#$40
+	byte	#$30
+	byte	#$20
+	byte	#$10
+	byte	#$00
+	byte	#$f0
+	byte	#$e0
+	byte	#$d0
+	byte	#$c0
+	byte	#$b0
+	byte	#$a0
+	byte	#$90
 
 	_align	5
 
@@ -9340,7 +9604,7 @@ Bank4_Line_BaseColor
 	_align	4
 Bank4_WasteLinesOnX
 	BYTE	#1
-	BYTE	#1
+	BYTE	#0
 	BYTE	#0
 	BYTE	#0
 
@@ -9442,6 +9706,27 @@ Bank4_Komachi_R_P1_Pointers
 	BYTE	#>Bank4_Komachi_R_P1_3
 	BYTE	#<Bank4_Komachi_R_P1_4
 	BYTE	#>Bank4_Komachi_R_P1_4
+
+	_align	2
+Bank4_Boss_Color_P0_L_Pointer
+	BYTE	#<Bank4_Komachi_L_P0_Color
+	BYTE	#>Bank4_Komachi_L_P0_Color
+
+	_align	2
+Bank4_Boss_Color_P0_R_Pointer
+	BYTE	#<Bank4_Komachi_R_P0_Color
+	BYTE	#>Bank4_Komachi_R_P0_Color
+
+	_align	2
+Bank4_Boss_Color_P1_L_Pointer
+	BYTE	#<Bank4_Komachi_L_P1_Color
+	BYTE	#>Bank4_Komachi_L_P1_Color
+
+	_align	2
+Bank4_Boss_Color_P1_R_Pointer
+	BYTE	#<Bank4_Komachi_R_P1_Color
+	BYTE	#>Bank4_Komachi_R_P1_Color
+
 
 	_align	24
 Bank4_Komachi_L_P0_0
@@ -11072,6 +11357,12 @@ Bank5_DisplayDeathScreen_YouDied
 	STA	NUSIZ1
 
 	LDA	counter
+	sleep	2
+
+	STA	RESP0
+	sleep	3
+	STA	RESP1
+
 	AND	#%00000111
 	ORA	#$40
 	STA	temp01
@@ -11080,16 +11371,13 @@ Bank5_DisplayDeathScreen_YouDied
 	STA	GRP0	
 	STA	GRP1
 
-	sleep	4
+*	sleep	4
 
 **	LDA	#$F0
 **	STA	HMP0
 **	LDA	#$10
 **	STA	HMP1
 
-	STA	RESP0
-	sleep	3
-	STA	RESP1
 
 	LDA	counter
 	AND	#$0F
@@ -12862,6 +13150,8 @@ start_bank5
 ###Start-Bank6
 
 LandScape_Lines = 4
+LandScape_Lines_From = 14
+
 
 Bank6_LandScape
 	LDA	#$F0
@@ -12872,6 +13162,15 @@ Bank6_LandScape
 
 	LDA	#%00000101
 	STA	CTRLPF
+
+	LDA	WastingLinesCounter
+	AND	#15
+	STA	temp17
+
+	LDA	#LandScape_Lines_From
+	SEC
+	SBC	temp17
+	STA	temp17
 
 	LDA	#LandScape_Lines
 	STA	temp01
@@ -12901,10 +13200,6 @@ Bank6_LandScape_Loop
 	ADC	temp02
 	STA	temp03
 
-*	LDY	temp01
-*	LDA	Bank6_LandScape_Playfield_Mask,y
-*	STA	temp04
-
 	LDA	#5
 	SEC
 	SBC	temp01
@@ -12913,18 +13208,18 @@ Bank6_LandScape_Loop
 
 Bank6_LandScape_SubLoop
 	STA	WSYNC
-
-*	LDA	temp04
-*	STA	PF1
 	
 	LDA	temp03
 	STA	COLUBK
-	
+
+	DEC	temp17	
 	DEY
 	BPL	Bank6_LandScape_SubLoop
 
 	DEX
 	DEC	temp01
+
+	LDA	temp17
 	BPL	Bank6_LandScape_Loop
 
 Bank6_LandScape_Ended
@@ -14887,16 +15182,19 @@ Bank7_Set_Boss_Things
 	STA	BossSettings
 	STA	BossSettings2
 	STA	BossHP
+	STA	WastingLinesCounter
 
-	LDA	counter
+	JSR	Bank7_CallRandom
 	AND	#1
 	CMP	#1
 	BEQ	Bank7_StartBossXOnTheRight
 
+****	LDA	#24
 	LDA	#31
 	JMP	Bank7_StartedBossOnLeft
 Bank7_StartBossXOnTheRight
 	LDA	#StartOnTheRight
+***	ADC	#16
 Bank7_StartedBossOnLeft
 	STA	EnemyX
 
@@ -15712,10 +16010,32 @@ Bank7_HandleTheBoss
 
 	JMP	(temp01)
 *
-*	Summoned, fill HP and move to the center.
+*	Sink the Landscape
 *
 Bank7_Boss_State_0
-BossMiddle = 82
+LandScape_Lines_From1 = 15
+
+	LDA	counter
+	AND	#1
+	CMP	#1
+	BNE	Bank7_Nothing_Changes
+
+	INC	WastingLinesCounter
+	LDA	WastingLinesCounter
+	CMP	#LandScape_Lines_From1
+	BNE	Bank7_Nothing_Changes
+
+	LDA	#0
+	STA	Bank7_Nothing_Changes
+	INC	BossSettings
+Bank7_Nothing_Changes
+
+	JMP	Bank7_ReturnFromAnything
+*
+*	Summoned, fill HP and move to the center.
+*
+Bank7_Boss_State_1
+BossMiddle = 96
 
 	LDA	EnemyX
 	CMP	#BossMiddle
@@ -15727,11 +16047,13 @@ BossMiddle = 82
 * BCS   else 	 
 *
 	BCS	Bank7_BossGoesFromLeft	
+	INC	EnemyX
 	LDA	#4	
 
 	JSR	Bank7_SetBossSprite
 	JMP	Bank7_BossWasNotAtCenter
 Bank7_BossGoesFromLeft
+	DEC	EnemyX
 	LDA	#3	
 	JSR	Bank7_SetBossSprite
 
@@ -15855,6 +16177,8 @@ Bank7_Boss_R_P1_PointerLists
 Bank7_Boss_State_Pointers
 	BYTE	#<Bank7_Boss_State_0
 	BYTE	#>Bank7_Boss_State_0
+	BYTE	#<Bank7_Boss_State_1
+	BYTE	#>Bank7_Boss_State_1
 
 	_align	8
 Bank7_DanmakuType_Pointers
@@ -16128,7 +16452,6 @@ Bank7_LevelArray_1
 
 ****	Testing
 **	BYTE	#%10010000	; Ghost summoned at random
-	BYTE	#%11111010	; Summon Komachi (LVL 1 boss)
 
 	BYTE	#%10000011	; Summon a soul from left to right
 	BYTE	#16
@@ -16168,7 +16491,8 @@ Bank7_LevelArray_1
 	BYTE	#%10010000	; Ghost summoned at random
 	BYTE	#8
 	BYTE	#%10010000	; Ghost summoned at random
-	BYTE	#8
+	BYTE	#16
+	BYTE	#%11111010	; Summon Komachi (LVL 1 boss)
 
 	BYTE	#127
 	BYTE	#%11111111	; Test Reset
@@ -17516,6 +17840,9 @@ Bank8_NoPF0Stuff
 	STA	COLUPF
 	STA	HMCLR
 	STY	PF0		; 9
+
+	LDA	#%00000101
+	STA	CTRLPF			; 3
 *
 *	Set sprite
 *
@@ -17589,8 +17916,8 @@ Bank8_DivideLoop
 	LDA	#$10
 	STA	NUSIZ0
 
-	LDA	#%00000101
-	STA	CTRLPF			; 3
+**	LDA	#%00000101
+**	STA	CTRLPF			; 3
 
 	ldx	#NumOfLoop
 Bank8_setFine
