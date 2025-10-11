@@ -251,7 +251,7 @@ EnemySettings2 = $C6
 BossHP = $BF
 BossSettings = $C0
 *
-*	0-4: Boss State
+*	0-3: Boss State
 *		00: Sinking LandScape
 *		01: Appear and move to the center
 *		02: Arrived to center, show messages
@@ -259,7 +259,7 @@ BossSettings = $C0
 *	     04-13: Spellcards
 * 		14: Death
 *		15: Showing the endgame screen
-*	5-7: Cooldown
+*	4-7: Cooldown
 *
 BossBackColor = $C1
 BossSpriteTablePointer_L_P0 = $C2
@@ -276,7 +276,12 @@ BossSettings2 = $CA
 WastingLinesCounter = $CB
 *
 *	0-4: Counter
-*	6-7: FREE
+*	5-7: FREE
+*
+
+DynamicBossColor = $D7
+*
+*	This is a 24 bytes array, goes up to $EF!
 *
 
 Eiki_Height = 23
@@ -285,64 +290,78 @@ NumberOfLines = 35
 StickColor = $30
 
 *
-*	For Testing: Normal Mode with default lives and bombs.
+*	For Testing: Hard Mode with default lives and bombs.
 
 	LDA	#$52
 	STA	LivesAndBombs
-	LDA	#%01000000
-	STA	eikiY
 
-	LDA	LandScape
-	ORA	#%00001000	
-	STA	LandScape
-
-	LDA	eikiY
-	ORA	#%00100000
+	LDA	#%10000000
 	STA	eikiY
 
 	LDA	#%00100000
 	STA	LevelAndCharge
 
-	LDA	#%01000000
-	STA	eikiSettings2
 
-*
-	LDA	#58
-	STA	eikiX
+*******************************
+
+	LDA	LivesAndBombs
+	STA	temp01
+
+	LDA	LevelAndCharge
+	AND	#%11100000
+	STA	temp02
 
 	LDA	eikiY
-	AND	#%11100000
+	AND	#%11000000
+	STA	temp03
+
+
+*
+*	Thru $A6 - $EF
+*
+	LDX	#73
+	LDA	#0
+Bank1_Init_Vars
+	STA	LivesAndBombs,x
+	DEX
+	BPL	Bank1_Init_Vars		
+
+	LDA	temp01
+	STA	LivesAndBombs
+
+	LDA	temp02
+	STA	LevelAndCharge
+
+	LDA	#58
+	STA	eikiX
+*
+*	In prod, remove #%00100000
+*
+	LDA	eikiY
 	ORA	#5
+	ORA	#%00100000
+	ORA	temp03
 	STA	eikiY
 
 	LDA	ScoreColorAdder
 	AND	#%11101111
 	STA	ScoreColorAdder
 
+	LDA	LandScape
+	ORA	#%00001000	
+	STA	LandScape
+
+	LDA	#%01000000
+	STA	eikiSettings2
+
+***	LDA	#5
+	STA	NewLoadDelay
+
 	LDA	#%01100000
 	STA	temp18
 	LDA	#255
 	STA	temp19
 	JSR	Bank1_SoundPlayer
-
-	LDA	#0
-	STA	ScoreColorAdder
-	STA	eikiSettings
-	STA	StickBuffer
-	STA	IndicatorSettings
-	STA	SaveHighScore
-	STA	LongCounter
-	STA	eikiSettings2
-	STA	SpellPicture
-	STA	eikiBackColor
-	STA	LevelPointer
-	STA	EnemyX
-	STA	DeathX 
-	STA	EnemySettings
-	STA	NewLoadDelay
-
-***	LDA	#5
-	STA	NewLoadDelay
 
 	LDA	LevelAndCharge
 	AND 	#%11100000
@@ -1843,7 +1862,7 @@ Bank1_MoveOnWithMain
 	
 	JSR	Bank1_DisplayDeathScreen
 **	STA	WSYNC
-	STA	WSYNC
+**	STA	WSYNC
 
 	JMP	Bank1_Main_Ended
 
@@ -1857,7 +1876,7 @@ Bank1_NoGameOverScreen
 
 	JSR	Bank1_DisplaySpellCardFace
 **	STA	WSYNC
-	STA	WSYNC
+**	STA	WSYNC
 
 	JMP	Bank1_Main_Ended
 
@@ -1966,7 +1985,18 @@ Bank1_Main_Ended
 Bank1_NotABossAtAll
 
 	JSR	Bank1_LandScape
+	JMP	Bank1_WasLandScapeOrNoBossMessage
 Bank1_NoLandScapeOnBoss
+	BIT	MessagePointer	
+	BPL	Bank1_WasLandScapeOrNoBossMessage
+	
+	LDX	#18
+Bank1_DiggiDiggiHole
+	STA	WSYNC
+	DEX
+	BPL	Bank1_DiggiDiggiHole
+
+Bank1_WasLandScapeOrNoBossMessage
 ***	JSR	Bank1_TestLines
 	JSR	Bank1_DrawScore
 	JSR	Bank1_LivesAndBombs
@@ -5439,17 +5469,25 @@ DifficultySettings_StartValues
 Bank2_48px_Text_Routine_For3
 
 	LDA	LevelAndCharge
+**	LSR
+**	LSR
+**	LSR
+**	LSR
+**	LSR
+**	SEC	
+**	SBC	#1
+**	ASL
+**	TAX
+
+	AND	#%11100000
 	LSR
 	LSR
 	LSR
-	LSR
-	LSR
+	LSR	
 	SEC	
-	SBC	#1
-	ASL
+	SBC	#%00000010
 	TAX
-	
-	
+
 	LDA	Bank2_LevelNumberPointers,x
 	STA	temp11
 	LDA	Bank2_LevelNumberPointers+1,x
@@ -9298,13 +9336,13 @@ Bank4_DontDownGradeAdder
 
 	LDA	LevelAndCharge
 	AND	#%11100000
-	SEC
-	SBC	#%00100000
 	LSR
 	LSR
 	LSR
 	LSR
-	TAY	
+	LSR
+	TAY
+	DEY	
 	LDA	Bank4_Line_BaseColor,y
 	CLC
 	ADC	temp05
@@ -9421,12 +9459,13 @@ Bank4_setFine
 	STA	HMOVE
 
 	LDA 	LevelAndCharge
-	AND	#%11000000
+	AND	#%11100000
 	LSR
 	LSR
 	LSR
 	LSR
-	LSR
+	SEC
+	SBC	#%00000010
 	TAY
 	
 	LDA	counter
@@ -9792,12 +9831,11 @@ Bank4_FineAdjustTable
 	byte	#$a0
 	byte	#$90
 
-	_align	5
+	_align	4
 
 Bank4_Line_BaseColor
 	BYTE	#$40
-	BYTE	#$D0
-	BYTE	#$D0
+	BYTE	#$80
 	BYTE	#$D0
 	BYTE	#$D0
 
@@ -13522,14 +13560,13 @@ Bank6_LandScape
 	LDA	#LandScape_Lines
 	STA	temp01
 
-	CLC
-
 	LDA 	LevelAndCharge
 	AND	#%11100000
-	ROL
-	ROL
-	ROL
-	ROL
+	LSR
+	LSR
+	LSR
+	LSR
+	LSR
 	TAX
 	DEX
 	LDA	Bank6_LandScape_BaseColor,x
@@ -14845,16 +14882,6 @@ Bank7_StillHaveSomeLeft
 
 	JMP 	(temp01)
 
-*	CMP	#$10
-*	BEQ	Bank7_DanmakuType1
-*
-*	CMP	#$20
-*	BNE	Bank7_Not_DanmakuType2
-*	JMP	Bank7_DanmakuType2
-*
-*Bank7_Not_DanmakuType2
-*	JMP	Bank7_HandleNextOne
-
 Bank7_DanmakuType1
 	CLC
 	LDA	eikiY
@@ -15299,17 +15326,20 @@ Bank7_DisplayDanmakuPixelGotX
 
 	RTS
 
-Bank7_NextEvent
+Bank7_GetLevelNumberAndLSRToPoz2
 	LDA	LevelAndCharge
 	AND	#%11100000
 	LSR
 	LSR
 	LSR
 	LSR
+	SEC	
+	SBC	#2	
 
-	SEC
-	SBC	#2
+	RTS
 
+Bank7_NextEvent
+	JSR	Bank7_GetLevelNumberAndLSRToPoz2
 	TAX
 
 	LDA	Bank7_LevelArrayPointers,x
@@ -15586,6 +15616,10 @@ Bank7_EnemyXOutOfBounds
 
 
 Bank7_HandTheEnemy
+
+	LDA	eikiSettings
+	AND	#3
+	STA	temp16
 
 	LDA	#0
 	STA	temp07
@@ -15924,8 +15958,7 @@ Bank7_Behavour_0_Random_LargerThan_2
 Bank7_DanmakuAlreadyShootBe0	
 Bank7_NoRemoveBehave0
 Bank7_NoChangeInSettings
-	LDA	eikiSettings
-	AND	#3
+	LDA	temp16
 	ASL
 	TAY	
 	
@@ -16031,8 +16064,7 @@ Bank7_Behavour_1_Go_DEC
 	JMP	Bank7_RemoveCommonEnemy
 
 Bank7_Behavour_1_Gone
-	LDA	eikiSettings
-	AND	#3
+	LDA	temp16
 	ASL
 	TAY	
 	
@@ -16275,14 +16307,7 @@ Bank7_SetBossSprite
 	ORA	BossSettings2
 	STA	BossSettings2
 
-	LDA	LevelAndCharge
-	AND	#%11100000
-	SEC
-	SBC	#%00100000
-	LSR
-	LSR
-	LSR
-	LSR
+	JSR	Bank7_GetLevelNumberAndLSRToPoz2
 	TAY
 
 	LDA	Bank7_Boss_L_P0_PointerLists,y
@@ -16319,6 +16344,22 @@ Bank7_HandleTheBoss
 	STA	BossSettings2
 
 	LDA	BossSettings
+	AND	#$F0
+	CMP	#0
+	BEQ	Bank7_No_Boss_Cooldown
+
+	SEC
+	SBC	#$10
+	STA	temp01
+
+	LDA	BossSettings
+	AND	#$0F
+	ORA	temp01
+	STA	BossSettings
+	JMP	Bank7_Nothing_Changes	
+
+Bank7_No_Boss_Cooldown
+	LDA	BossSettings
 	AND	#$0F
 	ASL
 	TAY	
@@ -16350,7 +16391,14 @@ LandScape_Lines_From1 = 15
 	STA	Bank7_Nothing_Changes
 	INC	BossSettings
 Bank7_Nothing_Changes
-
+	LDA	BossSettings2
+	AND	#7
+	CMP	#4
+	BCS	Bank7_NotStandingStill
+	LDA	temp16
+Bank7_NotStandingStill
+	
+	JSR	Bank7_SetBossSprite
 	JMP	Bank7_ReturnFromAnything
 *
 *	Summoned, fill HP and move to the center.
@@ -16369,19 +16417,19 @@ BossMiddle = 96
 *
 	BCS	Bank7_BossGoesFromLeft	
 	INC	EnemyX
-	LDA	#4	
 
+	LDA	#4	
 	JSR	Bank7_SetBossSprite
 	JMP	Bank7_BossWasNotAtCenter
 Bank7_BossGoesFromLeft
 	DEC	EnemyX
+
 	LDA	#3	
 	JSR	Bank7_SetBossSprite
-
+	JMP	Bank7_BossWasNotAtCenter
 Bank7_Boss_At_Center
 
-	LDA	eikiSettings
-	AND	#3
+	LDA	temp16
 	JSR	Bank7_SetBossSprite
 
 Bank7_BossWasNotAtCenter
@@ -16410,16 +16458,16 @@ Bank7_HP_Is_Full
 
 	INC	BossSettings
 	
+	LDA	BossSettings
+	ORA	#$F0
+	STA	BossSettings
+
 	LDA	BossSettings2
 	AND	#%11100011
 	STA	temp01
 
-	LDA	LevelAndCharge
-	AND	#%11000000
-	CLC
-	ROR
-	ROR
-	ROR
+	JSR	Bank7_GetLevelNumberAndLSRToPoz2
+	LSR
 	TAY
 	LDA	Bank7_NumberOfMessagesOnBossIntro,y
 	ASL
@@ -16462,12 +16510,15 @@ Bank7_Boss_State_2
 Bank7_NoMoreMessages
 	INC	BossSettings
 	JMP	Bank7_ReturnFromAnything
+
+
+
 *
 *	Non-spell attack
 *
 Bank7_Boss_State_3
 
-	JMP	Bank7_ReturnFromAnything
+	JMP	Bank7_Nothing_Changes
 
 Bank7_CallRandom
 	LDA	random
