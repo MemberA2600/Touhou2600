@@ -275,8 +275,8 @@ BossSettings2 = $CA
 *	
 WastingLinesCounter = $CB
 *
-*	0-4: Counter
-*	5-7: FREE
+*	0-3: Counter
+*	4-7: FREE
 *
 
 DynamicBossColor = $D7
@@ -295,7 +295,7 @@ StickColor = $30
 	LDA	#$52
 	STA	LivesAndBombs
 
-	LDA	#%10000000
+	LDA	#%11000000
 	STA	eikiY
 
 	LDA	#%00100000
@@ -488,7 +488,7 @@ OverScanBank1
 	LDA	counter
 	AND	#1
 	CMP	#1
-	BNE	Bank1_NoSpellPictureDEC
+	BEQ	Bank1_NoSpellPictureDEC
 
 	BIT	LongCounter
 	BVC	Bank1NothingToDoWithFireButton
@@ -849,7 +849,7 @@ Bank1_DontSetMagicFlag
 
 	LDA	counter
 	AND	#%00000011
-	CMP	#%00000011
+	CMP	#%00000010
 	BNE	Bank1_CannotAttack
 
 	LDA	eikiSettings2
@@ -1104,7 +1104,7 @@ Bank1_Eiki_NoRevive
 Bank1_Eiki_Whatever
 	LDA	counter
 	AND	#7
-	CMP	#7
+	CMP	#6
 	BNE	Bank1_DontINCSpriteIndex
 	
 	LDA	eikiSettings
@@ -1393,52 +1393,6 @@ Bank1_Bank1DelayCounterIs0
 
 Bank1_NoNextEventLoad
 
-*VSYNC
-*----------------------------7
-* This is a fixed section in
-* every bank. Don't need to be
-* at the same space, of course.
-
-WaitUntilOverScanTimerEndsBank1
-	CLC
-	LDA 	INTIM
-	BMI 	WaitUntilOverScanTimerEndsBank1
-
-* Sync the Screen
-*
-
-	LDA 	#2
-	STA 	WSYNC  ; one line with VSYNC
-	STA 	VSYNC	; enable VSYNC
-	STA 	WSYNC 	; one line with VSYNC
-	STA 	WSYNC 	; one line with VSYNC
-	LDA 	#0
-	STA 	WSYNC 	; one line with VSYNC
-	STA 	VSYNC 	; turn off VSYNC
-
-* Set the timer for VBlank
-*
-	STA	VBLANK
-	STA 	WSYNC
-
-	CLC
- 	LDA	#NTSC_Vblank
-	STA	TIM64T
-
-
-*VBLANK
-*-----------------------------
-* This is were you can set a piece
-* of code as well, but some part may
-* be used by the kernel.
-*
-VBLANKBank1
-
-	LDA	#%00000000
-	STA	temp18
-	STA	temp19
-	JSR	Bank1_SoundPlayer
-
 Bank1_EnemyStuff
 	DEC 	EnemyBackColor
 	LDA	EnemyBackColor
@@ -1554,7 +1508,7 @@ Bank1_DoneEnemyStuff
 Bank1_ThereIsBoom
 	LDA	counter
 	AND	#3
-	CMP	#3
+	CMP	#2
 	BNE	Bank1_DontIncrementBoom
 
 	LDA	EnemySettings2
@@ -1611,6 +1565,52 @@ Bank1_DontIncrementBoom
 	ORA	temp01
 	STA	LandScape
 Bank1_NoLandScapeStuff
+
+*VSYNC
+*----------------------------7
+* This is a fixed section in
+* every bank. Don't need to be
+* at the same space, of course.
+
+WaitUntilOverScanTimerEndsBank1
+	CLC
+	LDA 	INTIM
+	BMI 	WaitUntilOverScanTimerEndsBank1
+
+* Sync the Screen
+*
+
+	LDA 	#2
+	STA 	WSYNC  ; one line with VSYNC
+	STA 	VSYNC	; enable VSYNC
+	STA 	WSYNC 	; one line with VSYNC
+	STA 	WSYNC 	; one line with VSYNC
+	LDA 	#0
+	STA 	WSYNC 	; one line with VSYNC
+	STA 	VSYNC 	; turn off VSYNC
+
+* Set the timer for VBlank
+*
+	STA	VBLANK
+	STA 	WSYNC
+
+	CLC
+ 	LDA	#NTSC_Vblank
+	STA	TIM64T
+
+
+*VBLANK
+*-----------------------------
+* This is were you can set a piece
+* of code as well, but some part may
+* be used by the kernel.
+*
+VBLANKBank1
+
+	LDA	#%00000000
+	STA	temp18
+	STA	temp19
+	JSR	Bank1_SoundPlayer
 
 	LDA	eikiX			
 	AND	#%01111111
@@ -1706,7 +1706,7 @@ Bank1_JustAnEnemyDied
 Bank1_NoHitSound
 	LDA	counter
 	AND	#%00000111
-	CMP	#%00000111
+	CMP	#%00000110
 	BNE	Bank1_NoIndicatorSpriteUpdate
 
 	JSR	Bank1_SetIndicatorSprites
@@ -1729,6 +1729,9 @@ Bank1_NoIndicatorSpriteUpdate
 **	AND	Bank1_Danmaku_Speed_Delay,y
 **	CMP	Bank1_Danmaku_Speed_Delay,y
 **	BNE	Bank1_NoDanmakuHandleDeadOrSpell
+	
+	LDA	LandScape
+	BMI	Bank1_NoDanmakuHandleDeadOrSpell
 
 	JSR	Bank1_HandleDanmaku
 Bank1_NoDanmakuHandleDeadOrSpell
@@ -11611,16 +11614,21 @@ Bank5_YouDied_Ended
 	LDA	#$B0
 	STA	HMP0
 	LDA	#$D0
-	STA	HMP1
+***	STA	HMP1
+
+	BYTE	#$8D
+	BYTE	#HMP1
+	BYTE	#0
 
 	LDA	counter
 	LSR
 	LSR
-	AND	#$0F
 
 	STA	RESP0
 	sleep	3
 	STA	RESP1
+
+	AND	#$0F
 
 	TAY
 
@@ -14858,9 +14866,19 @@ Bank7_HandleDanmaku
 	LDX	#255
 
 Bank7_HandleNextOne
+
+	LDA 	INTIM
+	CMP	#135
+	BCS	Bank7_StillHaveScanlinesLeft
+
+	JMP	Bank7_ReturnFromAnything
+
+Bank7_StillHaveScanlinesLeft
+
 	INX
 	CPX	#8
 	BNE	Bank7_StillHaveSomeLeft
+
 	JMP	Bank7_ReturnFromAnything
 Bank7_StillHaveSomeLeft
 
@@ -14897,8 +14915,17 @@ Bank7_DanmakuType1
 	BEQ	Bank7_JustDrawItPrep
 
 	LDA	counter
+	AND	#1
+	STA	temp01
+
+	TXA
+	AND	#1
+	CMP	temp01
+	BEQ	Bank7_JustDrawItPrep
+
+	LDA	counter
 	AND	Bank7_Danmaku_Speed_Delay,y
-	CMP	Bank7_Danmaku_Speed_Delay2,y
+	CMP	Bank7_Danmaku_Speed_Delay,y
 	BEQ	Bank7_DoNoJustDrawIt
 
 Bank7_JustDrawItPrep
@@ -15015,9 +15042,19 @@ Bank7_DanmakuType2
 	BNE	Bank7_DanTyp2_CheckOnCounter
 	JMP	Bank7_JustDrawItPrep
 Bank7_DanTyp2_CheckOnCounter
+
+	LDA	counter
+	AND	#1
+	STA	temp01
+
+	TXA
+	AND	#1
+	CMP	temp01
+	BEQ	Bank7_JustDrawItPrep
+
 	LDA	counter
 	AND	Bank7_Danmaku_Speed_Delay,y
-	CMP	Bank7_Danmaku_Speed_Delay2,y
+	CMP	Bank7_Danmaku_Speed_Delay,y
 	BEQ	Bank7_DoNoJustDrawIt_2
 	JMP	Bank7_JustDrawItPrep
 
@@ -15199,9 +15236,19 @@ Bank7_DanmakuType3
 	LDA	Danmaku_SettingsR,x
 	STA	temp06
 
+
+	LDA	counter
+	AND	#1
+	STA	temp01
+
+	TXA
+	AND	#1
+	CMP	temp01
+	BEQ	Bank7_JustDrawItPrep
+
 	LDA	counter
 	AND	Bank7_Danmaku_Speed_Delay,y
-	CMP	Bank7_Danmaku_Speed_Delay2,y
+	CMP	Bank7_Danmaku_Speed_Delay,y
 	BNE	Bank7_DanmakuType3_C_1
 	
 	LDA	temp06
@@ -16812,8 +16859,8 @@ Bank7_BehavePointers
 Bank7_StartXOnTheLeftBasedOnNUSIZ
 	BYTE	#33
 	BYTE	#17
-	BYTE	#1
-	BYTE	#1
+	BYTE	#3
+	BYTE	#3
 
 	_align  4
 Bank7_PointsOnType
@@ -16903,7 +16950,7 @@ Bank7_LevelArray_1
 
 ****	Testing
 **	BYTE	#%10010000	; Ghost summoned at random
-	BYTE	#%11111010	; Summon Komachi (LVL 1 boss)
+**	BYTE	#%11111010	; Summon Komachi (LVL 1 boss)
 
 	BYTE	#%10000011	; Summon a soul from left to right
 	BYTE	#16
@@ -16972,13 +17019,6 @@ Bank7_Danmaku_Type2_Morph
 
 	_align	4
 Bank7_Danmaku_Speed_Delay
-	BYTE	#7
-	BYTE	#3
-	BYTE	#3
-	BYTE	#1
-
-	_align	4
-Bank7_Danmaku_Speed_Delay2
 	BYTE	#6
 	BYTE	#2
 	BYTE	#2
