@@ -271,7 +271,7 @@ BossSettings2 = $CA
 *
 *	0-2: Sprite Index
 *	3-5: Messages left
-*	6-7: FREE
+*	6-7: DamageBuffer
 *	
 WastingLinesCounter = $CB
 *
@@ -295,7 +295,9 @@ StickColor = $30
 	LDA	#$52
 	STA	LivesAndBombs
 
-	LDA	#%11000000
+****	LDA	#%10000000
+****	LDA	#%11000000
+	LDA	#%01000000
 	STA	eikiY
 
 	LDA	#%00100000
@@ -2813,14 +2815,14 @@ Bank1_DisplayDeathScreen
    	jmp	Bank1_JMPto5
 		
 Bank1_LandScape
-	lda	#>(Bank6_LandScape-1)
+	lda	#>(Bank2_LandScape-1)
    	pha
-   	lda	#<(Bank6_LandScape-1)
-Bank1_JMPto6
+   	lda	#<(Bank2_LandScape-1)
+Bank1_JMPto2
    	pha
    	pha
    	pha
-   	ldx	#6
+   	ldx	#2
 
 	LDA	#0
 	STA	temp19
@@ -2863,16 +2865,16 @@ Bank1_Erase_Danmakus
 	RTS
 
 Bank1_NextEvent
-	lda	#>(Bank7_NextEvent-1)
+	lda	#>(Bank6_NextEvent-1)
   	pha
- 	lda	#<(Bank7_NextEvent-1)
-	JMP	Bank1_JMPto7
+ 	lda	#<(Bank6_NextEvent-1)
+	JMP	Bank1_JMPto6
 
 Bank1_Display_Name
-	lda	#>(Bank6_Display_Name-1)
+	lda	#>(Bank2_Display_Name-1)
   	pha
- 	lda	#<(Bank6_Display_Name-1)
-	JMP	Bank1_JMPto6
+ 	lda	#<(Bank2_Display_Name-1)
+	JMP	Bank1_JMPto2
 
 Bank1_HandTheEnemy
 	lda	#>(Bank7_HandTheEnemy-1)
@@ -2896,7 +2898,16 @@ Bank1_DrawCommonEnemies
 	lda	#>(Bank6_DrawCommonEnemies-1)
   	pha
  	lda	#<(Bank6_DrawCommonEnemies-1)
-	JMP	Bank1_JMPto6
+Bank1_JMPto6
+   	pha
+   	pha
+   	pha
+   	ldx	#6
+
+	LDA	#0
+	STA	temp19
+
+   	jmp	bankSwitchJump
 
 
 Bank1_DrawBossThings
@@ -4743,6 +4754,8 @@ Touhou_Title__04
 	BYTE %00111000
 
 Touhou_Title__E05
+Bank2_Character_Names_Rumia_3
+Bank2_Character_Names_Sariel_3
 	BYTE %00000000
 	BYTE %00000000
 	BYTE %00000000
@@ -5457,11 +5470,253 @@ DifficultySettings_FG_04
 	BYTE	#$44
 	BYTE	#$42
 
+	_align 	4
 DifficultySettings_StartValues
 	BYTE	#$74
 	BYTE	#$52
 	BYTE	#$32
 	BYTE	#$32
+
+	_align	12
+Bank2_LandScape_Amplitude
+	BYTE	#$02
+	BYTE	#$04
+	BYTE	#$06
+	BYTE	#$08
+
+	BYTE	#$06
+	BYTE	#$08
+	BYTE	#$06
+	BYTE	#$04
+
+	BYTE	#$02
+	BYTE	#$04
+	BYTE	#$06
+	BYTE	#$08
+
+	_align	8
+Bank2_Character_Text_BaseColor_Adders	
+	BYTE	#$04
+	BYTE	#$04
+	BYTE	#$04
+	BYTE	#$04
+	BYTE	#$04
+	BYTE	#$06
+	BYTE	#$08
+	BYTE	#$0A
+
+	_align	5
+Bank2_Character_Text_BaseColors
+	BYTE	#$80
+Bank2_LandScape_BaseColor
+	BYTE	#$40
+	BYTE	#$80
+	BYTE	#$00
+	BYTE	#$30
+
+	_align	5
+Bank2_Character_Text_Colors
+	BYTE	#$00
+	BYTE	#$02
+	BYTE	#$04
+	BYTE	#$02
+	BYTE	#$04
+
+	_align	12
+Bank2_Character_Names_Pointers_0
+	BYTE	#<Bank2_Character_Names_ShikiEiki_0
+	BYTE	#>Bank2_Character_Names_ShikiEiki_0
+	BYTE	#<Bank2_Character_Names_Komachi_0
+	BYTE	#>Bank2_Character_Names_Komachi_0
+	BYTE	#<Bank2_Character_Names_Cirnobyl_0
+	BYTE	#>Bank2_Character_Names_Cirnobyl_0
+	BYTE	#<Bank2_Character_Names_Rumia_0
+	BYTE	#>Bank2_Character_Names_Rumia_0
+	BYTE	#<Bank2_Character_Names_Sariel_0
+	BYTE	#>Bank2_Character_Names_Sariel_0
+
+	_align	12
+Bank2_Character_Names_Pointers_1
+	BYTE	#<Bank2_Character_Names_ShikiEiki_1
+	BYTE	#>Bank2_Character_Names_ShikiEiki_1
+	BYTE	#<Bank2_Character_Names_Komachi_1
+	BYTE	#>Bank2_Character_Names_Komachi_1
+	BYTE	#<Bank2_Character_Names_Cirnobyl_1
+	BYTE	#>Bank2_Character_Names_Cirnobyl_1
+	BYTE	#<Bank2_Character_Names_Rumia_1
+	BYTE	#>Bank2_Character_Names_Rumia_1
+	BYTE	#<Bank2_Character_Names_Sariel_1
+	BYTE	#>Bank2_Character_Names_Sariel_1
+
+	_align	12
+Bank2_Character_Names_Pointers_2
+	BYTE	#<Bank2_Character_Names_ShikiEiki_2
+	BYTE	#>Bank2_Character_Names_ShikiEiki_2
+	BYTE	#<Bank2_Character_Names_Komachi_2
+	BYTE	#>Bank2_Character_Names_Komachi_2
+	BYTE	#<Bank2_Character_Names_Cirnobyl_2
+	BYTE	#>Bank2_Character_Names_Cirnobyl_2
+	BYTE	#<Bank2_Character_Names_Rumia_2
+	BYTE	#>Bank2_Character_Names_Rumia_2
+	BYTE	#<Bank2_Character_Names_Sariel_2
+	BYTE	#>Bank2_Character_Names_Sariel_2
+
+	_align	12
+Bank2_Character_Names_Pointers_3
+	BYTE	#<Bank2_Character_Names_ShikiEiki_3
+	BYTE	#>Bank2_Character_Names_ShikiEiki_3
+	BYTE	#<Bank2_Character_Names_Komachi_3
+	BYTE	#>Bank2_Character_Names_Komachi_3
+	BYTE	#<Bank2_Character_Names_Cirnobyl_3
+	BYTE	#>Bank2_Character_Names_Cirnobyl_3
+	BYTE	#<Bank2_Character_Names_Rumia_3
+	BYTE	#>Bank2_Character_Names_Rumia_3
+	BYTE	#<Bank2_Character_Names_Sariel_3
+	BYTE	#>Bank2_Character_Names_Sariel_3
+
+	_align	5
+Bank2_Character_Names_Sariel_0
+	BYTE	#%11001010
+	BYTE	#%00101010
+	BYTE	#%01001110
+	BYTE	#%10001010
+	BYTE	#%01100100
+
+	_align	5
+Bank2_Character_Names_Rumia_0
+	BYTE	#%10100100
+	BYTE	#%10101010
+	BYTE	#%11001010
+	BYTE	#%10101010
+	BYTE	#%11001010
+
+	_align	5
+Bank2_Character_Names_Cirnobyl_0
+	BYTE	#%01101010
+	BYTE	#%10001010
+	BYTE	#%10001011
+	BYTE	#%10001010
+	BYTE	#%01101011
+
+	_align	5
+Bank2_Character_Names_Komachi_0
+	BYTE	#%10010010
+	BYTE	#%10100101
+	BYTE	#%11000101
+	BYTE	#%10100101
+	BYTE	#%10010010
+
+	_align	5
+Bank2_Character_Names_ShikiEiki_0
+	BYTE	#%11001010
+	BYTE	#%00101010
+	BYTE	#%01001110
+	BYTE	#%10001010
+	BYTE	#%01101010
+
+	_align	5
+Bank2_Character_Names_Sariel_1
+	BYTE	#%10101011
+	BYTE	#%10101010
+	BYTE	#%11001011
+	BYTE	#%10101010
+	BYTE	#%11001011
+
+	_align	5
+Bank2_Character_Names_Rumia_1
+	BYTE	#%10001010
+	BYTE	#%10001010
+	BYTE	#%10101010
+	BYTE	#%11011010
+	BYTE	#%10001010
+
+	_align	5
+Bank2_Character_Names_Cirnobyl_1
+	BYTE	#%10100100
+	BYTE	#%10100101
+	BYTE	#%00101101
+	BYTE	#%10110101
+	BYTE	#%00100100
+
+	_align	5
+Bank2_Character_Names_Komachi_1
+	BYTE	#%01000101
+	BYTE	#%01000101
+	BYTE	#%01010101
+	BYTE	#%01101101
+	BYTE	#%01000100
+
+	_align	5
+Bank2_Character_Names_ShikiEiki_1
+	BYTE	#%10100101
+	BYTE	#%10101001
+	BYTE	#%10110001
+	BYTE	#%10101001
+	BYTE	#%10100101
+
+	_align	5
+Bank2_Character_Names_Sariel_2
+	BYTE	#%10111000
+	BYTE	#%00100010
+	BYTE	#%00100000
+	BYTE	#%00100010
+	BYTE	#%10100000
+
+	_align	5
+Bank2_Character_Names_Rumia_2
+	BYTE	#%10100000
+	BYTE	#%10101000
+	BYTE	#%11100000
+	BYTE	#%10101000
+	BYTE	#%01000000
+
+	_align	5
+Bank2_Character_Names_Cirnobyl_2
+	BYTE	#%10011000
+	BYTE	#%01010100
+	BYTE	#%01011000
+	BYTE	#%01010101
+	BYTE	#%10011001
+
+	_align	5
+Bank2_Character_Names_Komachi_2
+	BYTE	#%01001101
+	BYTE	#%01010001
+	BYTE	#%11010001
+	BYTE	#%01010001
+	BYTE	#%10001101
+
+	_align	5
+Bank2_Character_Names_ShikiEiki_2
+	BYTE	#%01110101
+	BYTE	#%01000101
+	BYTE	#%01100101
+	BYTE	#%01000101
+	BYTE	#%01110101
+
+	_align	5
+Bank2_Character_Names_Cirnobyl_3
+	BYTE	#%10011100
+	BYTE	#%10010001
+	BYTE	#%10010000
+	BYTE	#%01010001
+	BYTE	#%01010000
+
+	_align	5
+Bank2_Character_Names_Komachi_3
+	BYTE	#%01010000
+	BYTE	#%01010100
+	BYTE	#%11010000
+	BYTE	#%01010100
+	BYTE	#%01010000
+
+	_align	5
+Bank2_Character_Names_ShikiEiki_3
+	BYTE	#%00101000
+	BYTE	#%01001001
+	BYTE	#%10001000
+	BYTE	#%01001001
+	BYTE	#%00101000
 
 *Routine Section
 *---------------------------------
@@ -5803,6 +6058,192 @@ Bank2_ReturnNoRTS
 
    	jmp	bankSwitchJump
 
+LandScape_Lines = 4
+LandScape_Lines_From = 14
+
+
+Bank2_LandScape
+	LDA	#$F0
+	STA	PF0
+
+	LDA	#$00
+	STA	COLUPF
+
+	LDA	#%00000101
+	STA	CTRLPF
+
+	LDA	WastingLinesCounter
+	AND	#15
+	STA	temp17
+
+	LDA	#LandScape_Lines_From
+	SEC
+	SBC	temp17
+	STA	temp17
+
+	LDA	#LandScape_Lines
+	STA	temp01
+
+	LDA 	LevelAndCharge
+	AND	#%11100000
+	LSR
+	LSR
+	LSR
+	LSR
+	LSR
+	TAX
+	DEX
+	LDA	Bank2_LandScape_BaseColor,x
+	STA	temp02
+
+	LDA	LandScape
+	AND	#%00000111
+	CLC
+	ADC	#LandScape_Lines
+	TAX
+
+Bank2_LandScape_Loop
+	LDA	Bank2_LandScape_Amplitude,x
+	CLC
+	ADC	temp02
+	STA	temp03
+
+	LDA	#5
+	SEC
+	SBC	temp01
+	TAY
+	DEY
+
+Bank2_LandScape_SubLoop
+	STA	WSYNC
+	
+	LDA	temp03
+	STA	COLUBK
+
+	DEC	temp17	
+	DEY
+	BPL	Bank2_LandScape_SubLoop
+
+	DEX
+	DEC	temp01
+
+	LDA	temp17
+	BPL	Bank2_LandScape_Loop
+
+Bank2_LandScape_Ended
+	LDA	#0
+	STA	WSYNC
+	STA	PF2
+	STA	COLUBK
+
+	JMP	Bank2_Jump_Back_To_Any
+
+Bank2_Display_Name
+*
+*	temp01 - 02: Pointer for text P0-0.
+*	temp03 - 04: Pointer for text P1-0.
+*	temp05 - 06: Pointer for text P0-1.
+*	temp07 - 08: Pointer for text P1-1.
+*	temp09 - BaseColor
+*
+	LDA	#$01
+	STA	NUSIZ0
+	STA	NUSIZ1
+	
+	LDA	SpellPicture
+	AND	#$F0
+	LSR
+	LSR
+	LSR
+	TAX	
+	
+	LDA	Bank2_Character_Names_Pointers_0,x
+	STA	temp01
+	LDA	Bank2_Character_Names_Pointers_0+1,x
+	STA	temp02
+
+	LDA	Bank2_Character_Names_Pointers_1,x
+	STA	temp03
+	LDA	Bank2_Character_Names_Pointers_1+1,x
+	STA	temp04
+
+	LDA	Bank2_Character_Names_Pointers_2,x
+	STA	temp05
+	LDA	Bank2_Character_Names_Pointers_2+1,x
+	STA	temp06
+
+	LDA	Bank2_Character_Names_Pointers_3,x
+	STA	temp07
+	LDA	Bank2_Character_Names_Pointers_3+1,x
+	STA	temp08
+
+	STA	WSYNC
+	STA	HMCLR
+
+	TXA
+	LSR
+	TAX
+	LDA	Bank2_Character_Text_BaseColors,x
+	STA	temp09
+
+	LDA	SpellPicture
+	AND	#$0F
+	LSR
+	TAX	
+	LDA	Bank2_Character_Text_BaseColor_Adders,x
+	ORA	temp09
+	STA	temp09
+
+	LDY	#4
+	STA	RESP0
+	STA	RESP1
+
+	LDA	counter
+	AND	#1
+	TAX	
+
+	LDA	#$00
+	STA	HMP0
+	
+	LDA	#$10
+	STA	HMP1
+
+	STA	WSYNC
+	STA	HMOVE
+
+Bank2_Display_Name_Loop
+	STA	WSYNC	
+
+	LDA	(temp01),y
+	STA	GRP0		; 8
+
+	LDA	(temp03),y
+	STA	GRP1		; 8 (16)
+
+	LDA	Bank2_Character_Text_Colors,y	; 4 (20)
+	CLC					; 2 (22)
+	ADC	temp09				; 3 (25)
+	STA	COLUP0				 
+	STA	COLUP1				; 6 (31)
+
+	sleep	2
+
+	LAX	(temp07),y
+	LDA	(temp05),y			; 10 (41)
+	STA	GRP0		
+	STX	GRP1	
+	
+	DEY
+	BPL	Bank2_Display_Name_Loop
+
+Bank2_Display_Name_Ended
+	LDA	#0
+	STA	WSYNC
+	STA	HMCLR
+	STA	GRP0
+	STA	GRP1
+
+	JMP	Bank2_Jump_Back_To_Any
 
 ###End-Bank2
 	saveFreeBytes
@@ -10702,6 +11143,7 @@ Bank5_NoHighScoreRainbow
 	ORA	ScoreColorAdder
 	STA	ScoreColorAdder
 Bank5_NoDecrementGlow
+	STA	WSYNC
 
 	LDA	Score_1
 	AND	#$0F
@@ -11398,18 +11840,21 @@ Bank5_DisplayDeathScreen
 *
 
 Bank5_DisplayDeathScreen_YouDied
-	STA	HMCLR
 	
+**	BIT	NewLoadDelay
+**	BMI	Bank5_NotDiedOnBoss
+
+**	sleep	30
+
+**Bank5_NotDiedOnBoss
+
+	STA	WSYNC
+	STA	HMCLR
+
 	LDA	#$02	
 	STA	NUSIZ0
 	STA	NUSIZ1
-
 	LDA	counter
-	sleep	2
-
-	STA	RESP0
-	sleep	3
-	STA	RESP1
 
 	AND	#%00000111
 	ORA	#$40
@@ -11419,17 +11864,19 @@ Bank5_DisplayDeathScreen_YouDied
 	STA	GRP0	
 	STA	GRP1
 
-*	sleep	4
+***	LDA	counter
 
-**	LDA	#$F0
-**	STA	HMP0
-**	LDA	#$10
-**	STA	HMP1
+	BYTE	#$AD
+	BYTE	#counter
+	BYTE	#0
 
+	STA	RESP0
+	sleep	3
+	STA	RESP1
 
-	LDA	counter
 	AND	#$0F
 	TAX
+
 	LDA	Bank5_VicaVersa,x
 	LSR
 	ORA	#$40
@@ -11604,7 +12051,7 @@ Bank5_YouDied_Ended
 	LDA	#$02
 	STA	NUSIZ0
 
-	LDY	#2
+	LDY	#3
 	JSR	Bank5_WasteSomeLines
 
 	LDA	counter
@@ -13546,223 +13993,6 @@ LandScape_Lines = 4
 LandScape_Lines_From = 14
 
 
-Bank6_LandScape
-	LDA	#$F0
-	STA	PF0
-
-	LDA	#$00
-	STA	COLUPF
-
-	LDA	#%00000101
-	STA	CTRLPF
-
-	LDA	WastingLinesCounter
-	AND	#15
-	STA	temp17
-
-	LDA	#LandScape_Lines_From
-	SEC
-	SBC	temp17
-	STA	temp17
-
-	LDA	#LandScape_Lines
-	STA	temp01
-
-	LDA 	LevelAndCharge
-	AND	#%11100000
-	LSR
-	LSR
-	LSR
-	LSR
-	LSR
-	TAX
-	DEX
-	LDA	Bank6_LandScape_BaseColor,x
-	STA	temp02
-
-	LDA	LandScape
-	AND	#%00000111
-	CLC
-	ADC	#LandScape_Lines
-	TAX
-
-Bank6_LandScape_Loop
-	LDA	Bank6_LandScape_Amplitude,x
-	CLC
-	ADC	temp02
-	STA	temp03
-
-	LDA	#5
-	SEC
-	SBC	temp01
-	TAY
-	DEY
-
-Bank6_LandScape_SubLoop
-	STA	WSYNC
-	
-	LDA	temp03
-	STA	COLUBK
-
-	DEC	temp17	
-	DEY
-	BPL	Bank6_LandScape_SubLoop
-
-	DEX
-	DEC	temp01
-
-	LDA	temp17
-	BPL	Bank6_LandScape_Loop
-
-Bank6_LandScape_Ended
-	LDA	#0
-	STA	WSYNC
-	STA	PF2
-	STA	COLUBK
-
-Bank6_ReturnFromAnything
-	LDX	temp19
-	CPX	#255
-	BNE	Bank6_ReturnNoRTS
-Bank6_Return
-	RTS
-Bank6_ReturnNoRTS
-	TXA
-	INX
-
-	TAY
-
-	ASL		
-	TAY
-
-	LDA	Bank6_Return_JumpTable,y
-   	pha
-   	lda	Bank6_Return_JumpTable+1,y
-   	pha
-   	pha
-   	pha
-
-   	jmp	bankSwitchJump
-
-Bank6_Return
-	RTS
-
-Bank6_Display_Name
-*
-*	temp01 - 02: Pointer for text P0-0.
-*	temp03 - 04: Pointer for text P1-0.
-*	temp05 - 06: Pointer for text P0-1.
-*	temp07 - 08: Pointer for text P1-1.
-*	temp09 - BaseColor
-*
-	LDA	#$01
-	STA	NUSIZ0
-	STA	NUSIZ1
-	
-	LDA	SpellPicture
-	AND	#$F0
-	LSR
-	LSR
-	LSR
-	TAX	
-	
-	LDA	Bank6_Character_Names_Pointers_0,x
-	STA	temp01
-	LDA	Bank6_Character_Names_Pointers_0+1,x
-	STA	temp02
-
-	LDA	Bank6_Character_Names_Pointers_1,x
-	STA	temp03
-	LDA	Bank6_Character_Names_Pointers_1+1,x
-	STA	temp04
-
-	LDA	Bank6_Character_Names_Pointers_2,x
-	STA	temp05
-	LDA	Bank6_Character_Names_Pointers_2+1,x
-	STA	temp06
-
-	LDA	Bank6_Character_Names_Pointers_3,x
-	STA	temp07
-	LDA	Bank6_Character_Names_Pointers_3+1,x
-	STA	temp08
-
-	STA	WSYNC
-	STA	HMCLR
-
-	TXA
-	LSR
-	TAX
-	LDA	Bank6_Character_Text_BaseColors,x
-	STA	temp09
-
-	LDA	SpellPicture
-	AND	#$0F
-	LSR
-	TAX	
-	LDA	Bank6_Character_Text_BaseColor_Adders,x
-	ORA	temp09
-	STA	temp09
-
-	LDY	#4
-	STA	RESP0
-	STA	RESP1
-
-	LDA	counter
-	AND	#1
-	TAX	
-
-	LDA	#$00
-	STA	HMP0
-	
-	LDA	#$10
-	STA	HMP1
-
-	STA	WSYNC
-	STA	HMOVE
-
-**	LDA	#255
-**	STA	GRP0
-**	STA	GRP1
-
-**	LDA	#$88
-**	STA	COLUP0
-**	LDA	#$1e
-**	STA	COLUP0
-
-Bank6_Display_Name_Loop
-	STA	WSYNC	
-
-	LDA	(temp01),y
-	STA	GRP0		; 8
-
-	LDA	(temp03),y
-	STA	GRP1		; 8 (16)
-
-	LDA	Bank6_Character_Text_Colors,y	; 4 (20)
-	CLC					; 2 (22)
-	ADC	temp09				; 3 (25)
-	STA	COLUP0				 
-	STA	COLUP1				; 6 (31)
-
-	sleep	2
-
-	LAX	(temp07),y
-	LDA	(temp05),y			; 10 (41)
-	STA	GRP0		
-	STX	GRP1	
-	
-	DEY
-	BPL	Bank6_Display_Name_Loop
-
-Bank6_Display_Name_Ended
-	LDA	#0
-	STA	WSYNC
-	STA	HMCLR
-	STA	GRP0
-	STA	GRP1
-
-	JMP	Bank6_ReturnFromAnything
-
 Bank6_DrawCommonEnemies
 *
 *	The enemy should be player 1, so the explosion would overlap the sprites as P0.
@@ -13896,7 +14126,265 @@ Bank6_DrawCommonEnemies_Ended
 	STA	NUSIZ0
 	STA	CTRLPF
 
+Bank6_ReturnFromAnything
+	LDX	temp19
+	CPX	#255
+	BNE	Bank6_ReturnNoRTS
+Bank6_Return
+	RTS
+Bank6_ReturnNoRTS
+	TXA
+	INX
+
+	TAY
+
+	ASL		
+	TAY
+
+	LDA	Bank6_Return_JumpTable,y
+   	pha
+   	lda	Bank6_Return_JumpTable+1,y
+   	pha
+   	pha
+   	pha
+
+   	jmp	bankSwitchJump
+
+Bank6_Return
+	RTS
+
+Bank6_NextEvent
+	JSR	Bank6_GetLevelNumberAndLSRToPoz2
+	TAX
+
+	LDA	Bank6_LevelArrayPointers,x
+	STA	temp01
+
+	LDA	Bank6_LevelArrayPointers+1,x
+	STA	temp02
+
+	LDY	LevelPointer
+
+	LDA	(temp01),y
+
+	BMI	Bank6_ItsARealEvent
+	STA	NewLoadDelay
+
+	JMP	Bank6_IncrementLevelPointer
+Bank6_ItsARealEvent
+	AND	#%01111111
+	CMP	#127
+	BNE	Bank6_NotATestReset
+	LDA	#0
+	STA	LevelPointer
+	JMP	Bank6_NextEvent
+
+Bank6_NotATestReset
+	CMP	#1
+	BNE	Bank6_NotAMessageToBeDisplayed
+Bank6_DisplayAMessage
+	LDA	MessagePointer
+	ORA	#%10000000
+	STA	MessagePointer
+	AND	#%00111111
+	TAY
+	LDA	Bank6_SpellPictureValsForMessages,y
+	STA	SpellPicture
+
+	INC	MessagePointer	
+
+	LDA	LongCounter
+	ORA	#%10000000
+
+	BIT	INPT4
+	BMI	Bank6_NotPressedFireOnSet
+
+	ORA	#%01000000
+Bank6_NotPressedFireOnSet
+	STA	LongCounter
+
+	LDA	LandScape
+	AND	#%11001111
+	ORA	#%00010000
+	STA	LandScape
+
+	LDA	#%10111100
+	STA	TextCounter
+
+	BIT	NewLoadDelay
+	BPL	Bank6_NotBossTalk
+
+	LDA	BossSettings
+	AND	#$0F
+	CMP	#2
+	BNE	Bank6_NotBossTalk
 	JMP	Bank6_ReturnFromAnything
+Bank6_NotBossTalk
+	JMP	Bank6_IncrementLevelPointer
+Bank6_NotAMessageToBeDisplayed
+*
+*	From here, its likely that some enemy will be summoned.
+*
+	SEC
+	SBC	#2
+	TAY
+
+*
+* X >= Y
+*
+* LDA	X
+* CMP	Y
+* BCC 	else
+*		
+	CPY	#120
+	BCC	Bank6_No_Boss_Summoned
+	JMP	Bank6_Set_Boss_Things
+Bank6_No_Boss_Summoned
+	LDA	NewLoadDelay
+	AND	#%01111111
+	STA	NewLoadDelay
+
+	LDA	Bank6_EnemyTypeAndStartNUSIZ,y
+	STA	EnemySettings	
+	AND	#3
+	STA	temp01
+
+	LDA	EnemySettings2
+	AND	#3
+	STA	EnemySettings2
+
+	LDA	EnemySettings
+	LSR
+	LSR
+	TAY
+*
+*LandScape = $BA
+*
+*	0-2: Counter
+*	  3: Auto Increment 
+*	4-5: Danmaku Sound
+*	  6: HoldNextLoading
+*	  7: Danmaku Shot
+*
+*MessagePointer = $BC
+*
+*	0-5: MessageID
+*	  6: IgnoreNewEventHoldFlag
+*	  7: Message is Displayed
+*
+*EnemyX = $BE 
+*DeathX = $BF
+
+StartOnTheRight = 158
+
+	LDA	LandScape
+	AND	#%10110111
+*
+*	Bit 3: Auto Increment of Landscape
+*	Bit 6: Hold Increment of EventPointer
+*
+	ORA	#%01001000
+	STA	LandScape
+
+	LDA	MessagePointer
+	AND	#%10111111
+	STA	MessagePointer
+
+	LDA	Bank6_StartX,y
+	CMP	#0
+	BEQ	Bank6_ItsOnTheLeft
+
+	CMP	#255
+	BNE	Bank6_JustSaveX
+*
+*	These ones should be NUSIZ = $00 by default.
+*
+	JSR	Bank6_CallRandom
+	AND	#127
+	CLC
+	ADC	#31
+
+* CMP	Y
+* BCS   else 
+
+	CMP	#40
+	BCS	Bank6_RandomXLargerThan41
+	
+	LDA	#40
+	JMP	Bank6_JustSaveX
+Bank6_RandomXLargerThan41
+	JMP	Bank6_JustSaveX
+
+Bank6_ItsOnTheLeft
+	LDY	temp01
+	LDA	Bank6_StartXOnTheLeftBasedOnNUSIZ,y
+
+Bank6_JustSaveX
+	STA	EnemyX
+*
+*	Bit 7 should be 0 anyway, since this is not a boss.
+*
+	JMP	Bank6_IncrementLevelPointer
+
+Bank6_Set_Boss_Things
+*
+*	Don't have to store boss index, since it would be equal to the level number - 1.
+*
+
+	SEC
+	SBC	#120
+	TAY
+
+	LDA	NewLoadDelay
+	ORA	#%10000000
+	STA	NewLoadDelay
+
+*
+*	Bit 3: Auto Increment of Landscape
+*	Bit 6: Hold Increment of EventPointer
+*
+	LDA	LandScape
+	AND	#%10110111
+	ORA	#%01000000
+	STA	LandScape
+
+	LDA	#0
+	STA	BossSettings
+	STA	BossSettings2
+	STA	BossHP
+	STA	WastingLinesCounter
+
+BossOnTheLeft = 33
+	JSR	Bank6_CallRandom
+	AND	#1
+
+	TAX
+	LDA	Bank6_BossStartOnRandom,x
+	STA	EnemyX
+
+Bank6_IncrementLevelPointer
+	INC 	LevelPointer
+	JMP	Bank6_ReturnFromAnything
+
+Bank6_CallRandom
+	LDA	random
+	lsr
+	BCC 	*+4
+	EOR	#$d4
+	STA	random
+	rts
+
+Bank6_GetLevelNumberAndLSRToPoz2
+	LDA	LevelAndCharge
+	AND	#%11100000
+	LSR
+	LSR
+	LSR
+	LSR
+	SEC	
+	SBC	#2	
+
+	RTS
 
 *
 *	Data Section
@@ -13921,254 +14409,6 @@ Bank6_FineAdjustTable
 	byte	#$a0
 	byte	#$90
 
-	_align	8
-Bank6_Character_Text_BaseColor_Adders	
-	BYTE	#$04
-	BYTE	#$04
-	BYTE	#$04
-	BYTE	#$04
-	BYTE	#$04
-	BYTE	#$06
-	BYTE	#$08
-	BYTE	#$0A
-
-	_align	5
-Bank6_Character_Text_BaseColors
-	BYTE	#$80
-	BYTE	#$40
-	BYTE	#$80
-	BYTE	#$00
-	BYTE	#$30
-
-	_align	5
-Bank6_Character_Text_Colors
-	BYTE	#$00
-	BYTE	#$02
-	BYTE	#$04
-	BYTE	#$02
-	BYTE	#$04
-
-	_align	12
-Bank6_Character_Names_Pointers_0
-	BYTE	#<Bank6_Character_Names_ShikiEiki_0
-	BYTE	#>Bank6_Character_Names_ShikiEiki_0
-	BYTE	#<Bank6_Character_Names_Komachi_0
-	BYTE	#>Bank6_Character_Names_Komachi_0
-	BYTE	#<Bank6_Character_Names_Cirnobyl_0
-	BYTE	#>Bank6_Character_Names_Cirnobyl_0
-	BYTE	#<Bank6_Character_Names_Rumia_0
-	BYTE	#>Bank6_Character_Names_Rumia_0
-	BYTE	#<Bank6_Character_Names_Sariel_0
-	BYTE	#>Bank6_Character_Names_Sariel_0
-
-	_align	12
-Bank6_Character_Names_Pointers_1
-	BYTE	#<Bank6_Character_Names_ShikiEiki_1
-	BYTE	#>Bank6_Character_Names_ShikiEiki_1
-	BYTE	#<Bank6_Character_Names_Komachi_1
-	BYTE	#>Bank6_Character_Names_Komachi_1
-	BYTE	#<Bank6_Character_Names_Cirnobyl_1
-	BYTE	#>Bank6_Character_Names_Cirnobyl_1
-	BYTE	#<Bank6_Character_Names_Rumia_1
-	BYTE	#>Bank6_Character_Names_Rumia_1
-	BYTE	#<Bank6_Character_Names_Sariel_1
-	BYTE	#>Bank6_Character_Names_Sariel_1
-
-	_align	12
-Bank6_Character_Names_Pointers_2
-	BYTE	#<Bank6_Character_Names_ShikiEiki_2
-	BYTE	#>Bank6_Character_Names_ShikiEiki_2
-	BYTE	#<Bank6_Character_Names_Komachi_2
-	BYTE	#>Bank6_Character_Names_Komachi_2
-	BYTE	#<Bank6_Character_Names_Cirnobyl_2
-	BYTE	#>Bank6_Character_Names_Cirnobyl_2
-	BYTE	#<Bank6_Character_Names_Rumia_2
-	BYTE	#>Bank6_Character_Names_Rumia_2
-	BYTE	#<Bank6_Character_Names_Sariel_2
-	BYTE	#>Bank6_Character_Names_Sariel_2
-
-	_align	12
-Bank6_Character_Names_Pointers_3
-	BYTE	#<Bank6_Character_Names_ShikiEiki_3
-	BYTE	#>Bank6_Character_Names_ShikiEiki_3
-	BYTE	#<Bank6_Character_Names_Komachi_3
-	BYTE	#>Bank6_Character_Names_Komachi_3
-	BYTE	#<Bank6_Character_Names_Cirnobyl_3
-	BYTE	#>Bank6_Character_Names_Cirnobyl_3
-	BYTE	#<Bank6_Character_Names_Rumia_3
-	BYTE	#>Bank6_Character_Names_Rumia_3
-	BYTE	#<Bank6_Character_Names_Sariel_3
-	BYTE	#>Bank6_Character_Names_Sariel_3
-
-	_align	5
-Bank6_Character_Names_Sariel_0
-	BYTE	#%11001010
-	BYTE	#%00101010
-	BYTE	#%01001110
-	BYTE	#%10001010
-	BYTE	#%01100100
-
-	_align	5
-Bank6_Character_Names_Rumia_0
-	BYTE	#%10100100
-	BYTE	#%10101010
-	BYTE	#%11001010
-	BYTE	#%10101010
-	BYTE	#%11001010
-
-	_align	5
-Bank6_Character_Names_Cirnobyl_0
-	BYTE	#%01101010
-	BYTE	#%10001010
-	BYTE	#%10001011
-	BYTE	#%10001010
-	BYTE	#%01101011
-
-	_align	5
-Bank6_Character_Names_Komachi_0
-	BYTE	#%10010010
-	BYTE	#%10100101
-	BYTE	#%11000101
-	BYTE	#%10100101
-	BYTE	#%10010010
-
-	_align	5
-Bank6_Character_Names_ShikiEiki_0
-	BYTE	#%11001010
-	BYTE	#%00101010
-	BYTE	#%01001110
-	BYTE	#%10001010
-	BYTE	#%01101010
-
-	_align	5
-Bank6_Character_Names_Sariel_1
-	BYTE	#%10101011
-	BYTE	#%10101010
-	BYTE	#%11001011
-	BYTE	#%10101010
-	BYTE	#%11001011
-
-	_align	5
-Bank6_Character_Names_Rumia_1
-	BYTE	#%10001010
-	BYTE	#%10001010
-	BYTE	#%10101010
-	BYTE	#%11011010
-	BYTE	#%10001010
-
-	_align	5
-Bank6_Character_Names_Cirnobyl_1
-	BYTE	#%10100100
-	BYTE	#%10100101
-	BYTE	#%00101101
-	BYTE	#%10110101
-	BYTE	#%00100100
-
-	_align	5
-Bank6_Character_Names_Komachi_1
-	BYTE	#%01000101
-	BYTE	#%01000101
-	BYTE	#%01010101
-	BYTE	#%01101101
-	BYTE	#%01000100
-
-	_align	5
-Bank6_Character_Names_ShikiEiki_1
-	BYTE	#%10100101
-	BYTE	#%10101001
-	BYTE	#%10110001
-	BYTE	#%10101001
-	BYTE	#%10100101
-
-	_align	5
-Bank6_Character_Names_Sariel_2
-	BYTE	#%10111000
-	BYTE	#%00100010
-	BYTE	#%00100000
-	BYTE	#%00100010
-	BYTE	#%10100000
-
-	_align	5
-Bank6_Character_Names_Rumia_2
-	BYTE	#%10100000
-	BYTE	#%10101000
-	BYTE	#%11100000
-	BYTE	#%10101000
-	BYTE	#%01000000
-
-	_align	5
-Bank6_Character_Names_Cirnobyl_2
-	BYTE	#%10011000
-	BYTE	#%01010100
-	BYTE	#%01011000
-	BYTE	#%01010101
-	BYTE	#%10011001
-
-	_align	5
-Bank6_Character_Names_Komachi_2
-	BYTE	#%01001101
-	BYTE	#%01010001
-	BYTE	#%11010001
-	BYTE	#%01010001
-	BYTE	#%10001101
-
-	_align	5
-Bank6_Character_Names_ShikiEiki_2
-	BYTE	#%01110101
-	BYTE	#%01000101
-	BYTE	#%01100101
-	BYTE	#%01000101
-	BYTE	#%01110101
-
-	_align	5
-Bank6_Character_Names_Cirnobyl_3
-	BYTE	#%10011100
-	BYTE	#%10010001
-	BYTE	#%10010000
-	BYTE	#%01010001
-	BYTE	#%01010000
-
-	_align	5
-Bank6_Character_Names_Komachi_3
-	BYTE	#%01010000
-	BYTE	#%01010100
-	BYTE	#%11010000
-	BYTE	#%01010100
-	BYTE	#%01010000
-
-	_align	5
-Bank6_Character_Names_ShikiEiki_3
-	BYTE	#%00101000
-	BYTE	#%01001001
-	BYTE	#%10001000
-	BYTE	#%01001001
-	BYTE	#%00101000
-
-	_align	6
-Bank6_LandScape_BaseColor
-	BYTE	#$40
-	BYTE	#$D0
-	BYTE	#$D0
-	BYTE	#$D0
-	BYTE	#$D0
-	BYTE	#$D0
-
-	_align	12
-Bank6_LandScape_Amplitude
-	BYTE	#$02
-	BYTE	#$04
-	BYTE	#$06
-	BYTE	#$08
-
-	BYTE	#$06
-	BYTE	#$08
-	BYTE	#$06
-	BYTE	#$04
-
-	BYTE	#$02
-	BYTE	#$04
-	BYTE	#$06
-	BYTE	#$08
 
 	_align	14
 Bank6_Return_JumpTable
@@ -14485,6 +14725,172 @@ Bank6_Ghost_Colors
 	byte	#$18
 	byte	#$16
 
+
+	_align	4
+Bank6_SpellPictureValsForMessages
+	BYTE	#$0F		; Eiki,	     Level 1 start
+	BYTE	#$1F		; Komachi,   Level 1 Boss #1
+	BYTE	#$0F		; Eiki,      Level 1 Boss #2
+	BYTE	#$1F		; Komachi,   Level 1 Boss #3
+	BYTE	#$0F		; Eiki,      Level 1 Boss #4
+
+	_align	2
+Bank6_LevelArrayPointers
+	BYTE	#<Bank6_LevelArray_1
+	BYTE	#>Bank6_LevelArray_1
+
+*
+*	Type #00: Soul(s), 	moving from left to right
+*	Type #01: Soul(s), 	moving from rigth to left
+*	Type #02: Skulls,  	moving from left to right
+*	Type #03: Skulls, 	moving from rigth to left
+*	Type #04: Ghost		appear at random, rises and sinks
+*
+*	Based on levelArray.
+*
+	_align	14
+Bank6_EnemyTypeAndStartNUSIZ
+	BYTE	#%00000000	; One soul on the left 			%10000010	1
+	BYTE	#%00000100	; One soul on the right			%10000011	1
+	BYTE	#%00000001	; Two souls on the left (small gap)	%10000100	3	
+	BYTE	#%00000101	; Two souls on the right(small gap)	%10000101	0
+	BYTE	#%00000010	; Two souls on the left (huge gap)	%10000110	0
+	BYTE	#%00000110	; Two souls on the right(huge gap)	%10000111	1
+	BYTE	#%00000011	; Three souls on the left		%10001000	1
+	BYTE	#%00000111	; Three souls on the right		%10001001	1
+	BYTE	#%00001001	; Two skulls on the left (small gap)	%10001010	1
+	BYTE	#%00001101	; Two skulls on the right (small gap)	%10001011	1
+	BYTE	#%00001010	; Two skulls on the left (huge gap)	%10001100	2
+	BYTE	#%00001110	; Two skulls on the right (huge gap)	%10001101	1
+	BYTE	#%00001011	; Three skulls on the left 		%10001110	1
+	BYTE	#%00001111	; Three skulls on the right 		%10001111	1
+	BYTE	#%00010000	; Ghost summoned at random		%10010000	3 	
+
+	_align	4
+Bank6_StartXOnTheLeftBasedOnNUSIZ
+	BYTE	#33
+	BYTE	#17
+	BYTE	#3
+	BYTE	#3
+
+*
+*	If 0, start on the left depending on NUSIZ
+*	If 255, calculate random.
+*
+*	Based on EnemyTypeAndStartNUSIZ.
+*
+
+	_align  5
+Bank6_StartX
+ 	BYTE	#0
+ 	BYTE	#StartOnTheRight
+ 	BYTE	#0
+ 	BYTE	#StartOnTheRight
+	BYTE	#255
+
+	_align	2
+Bank6_BossStartOnRandom
+	BYTE	#BossOnTheLeft
+	BYTE	#StartOnTheRight
+
+*
+*	Data Structure for the level array.
+*	One level can have 255 lines.
+*
+*	0XXXXXXX - This means a wait of a max of 127 frames. 
+*	1YYYYYYY - This means YYYYY (max 127 kind) of events.
+*
+*	Types:
+*	-------
+*	000: 	End of Level
+*	001: 	Display a character message based on MessagePointer. The pointer is incremented after afterwards.
+*
+*	002: 	Summons a basic soul enemy on the right	
+*	003: 	Summons a basic soul enemy on the left	
+*	004: 	Summons two basic souls close on the right
+*	005: 	Summons two basic souls close on the left
+*	006: 	Summons two basic souls with a gap on the right
+*	007: 	Summons two basic souls with a gap on the left
+*	008: 	Summons three basic souls the right
+*	009: 	Summons three basic souls the left
+*
+*	010:	Summons two skulls with small gap on the right
+*	011:	Summons two skulls with small gap on the left
+*	012:	Summons two skulls with large gap on the right
+*	013:	Summons two skulls with large gap on the left
+*	014:	Summons three skulls on the right
+*	015:	Summons three skulls on the left
+*
+*	016:	Summons a ghost at random
+*
+*	120: 	Summons Komachi
+*	121:	Summons Cirnobyl
+*	122:	Summons Rumia
+*	123:	Summons Sariel
+*
+*	127:    Init LevelCounter to Zero (only for testing)
+*
+*	SpellPictureValues:
+*	-------------------
+*	 00:	Eiki
+*	 01:	Komachi
+*	 02: 	Cirnobyl
+*	 03:	Rumia
+*	 04:	Sariel
+*
+
+	_align	45
+Bank6_LevelArray_1
+	BYTE	#%10000001	; Display next
+	BYTE	#16
+
+****	Testing
+	BYTE	#%11111010	; Summon Komachi (LVL 1 boss)
+
+	BYTE	#%10000011	; Summon a soul from left to right
+	BYTE	#16
+	BYTE	#%10000010	; Summon a soul from right to left
+	BYTE	#8
+	BYTE	#%10000111	; Summons two souls on the right with huge gap
+	BYTE	#2
+	BYTE	#%10000100	; Summons two souls on left (small gap)
+	BYTE	#%10001000	; Summons three souls on left
+	BYTE	#%10001011	; Two skulls on the right (small gap)
+	BYTE	#%10001111	; Three skulls on the right 
+	BYTE	#%10001110	; Three skulls on the left 
+	BYTE	#%10001100	; Two skulls on the left (huge gap)	
+	BYTE	#%10001001	; Three souls on the right
+	BYTE	#%10000100	; Two souls on the left (small gap)
+	BYTE	#32
+	BYTE	#%10010000	; Ghost summoned at random
+	BYTE	#16
+	BYTE	#%10010000	; Ghost summoned at random
+	BYTE	#8
+	BYTE	#%10010000	; Ghost summoned at random
+	BYTE	#%10001101	; Two skulls on the right (huge gap)
+	BYTE	#%10001100	; Two skulls on the left (huge gap)
+	BYTE	#%10001001	; Three souls on the right
+	BYTE	#%10000100	; Summons two souls on left (small gap)
+	BYTE	#%10010000	; Ghost summoned at random
+	BYTE	#8
+	BYTE	#%10010000	; Ghost summoned at random
+	BYTE	#8
+	BYTE	#%10000101	; Two souls on the right(small gap)
+	BYTE	#%10000110	; Two souls on the left (huge gap)
+	BYTE	#8
+	BYTE	#%10001100	; Two skulls on the left (huge gap)
+	BYTE	#%10001101	; Two skulls on the right (huge gap)
+	BYTE	#%10001111	; Three skulls on the right 
+	BYTE	#%10001110	; Three skulls on the left 
+	BYTE	#%10010000	; Ghost summoned at random
+	BYTE	#8
+	BYTE	#%10010000	; Ghost summoned at random
+	BYTE	#16
+	BYTE	#%11111010	; Summon Komachi (LVL 1 boss)
+
+	BYTE	#127
+	BYTE	#%11111111	; Test Reset
+
 ###End-Bank6
 
 
@@ -14678,11 +15084,8 @@ Bank7_NoRandomShoot
 
 	JMP	Bank7_WasNoBossNope
 Bank7_BossIsDifferent	
-
-
-
-
-
+	LDA	#30
+	STA	temp04
 
 Bank7_WasNoBossNope
 	LDA	EnemyX
@@ -14700,6 +15103,15 @@ Bank7_WasNoBossNope
 Bank7_SeemsLikeOK2Me
 	STA	temp02
 
+	LDA	temp01
+	AND	#$F0
+	CMP	#$20
+	BNE	Bank7FirstBitsAreAngle
+
+	LDA	#%11100000
+	JMP	Bank7_ItsACounterForDanm
+
+Bank7FirstBitsAreAngle
 	LDA	temp08
 	CMP	#255
 	BNE	Bank7_Calculate_Angle
@@ -14709,6 +15121,7 @@ Bank7_SeemsLikeOK2Me
 Bank7_Calculate_Angle
 	JSR	Bank7_Fall_On_Eiki
 Bank7_Fixed_Angle
+Bank7_ItsACounterForDanm
 
 	ORA	temp02
 	STA	temp02
@@ -14782,7 +15195,29 @@ Bank7_AddDanmaku
 	BIT	LandScape
 
 	BPL	Bank7_TheVeryFirstOnFrame
-	JMP	Bank7_ReturnFromAnything
+Bank7_ReturnFromAnything
+	LDX	temp19
+	CPX	#255
+	BNE	Bank7_ReturnNoRTS
+Bank7_Return
+	RTS
+Bank7_ReturnNoRTS
+	TXA
+	INX
+
+	TAY
+
+	ASL		
+	TAY
+
+	LDA	Bank7_Return_JumpTable,y
+   	pha
+   	lda	Bank7_Return_JumpTable+1,y
+   	pha
+   	pha
+   	pha
+
+   	jmp	bankSwitchJump
 
 Bank7_TheVeryFirstOnFrame
 *
@@ -14816,11 +15251,7 @@ Bank7_TheVeryFirstOnFrame
 	ADC	Danmaku_NumR
 	STA	temp17
 
-	LDA	eikiY
-	AND	#%11000000
-	ROL
-	ROL
-	ROL
+	JSR	Bank7_GetDifficulty
 	TAY
 
 	LDA	Bank7_Max_Number_Of_Danmaku,y
@@ -14901,12 +15332,7 @@ Bank7_StillHaveSomeLeft
 	JMP 	(temp01)
 
 Bank7_DanmakuType1
-	CLC
-	LDA	eikiY
-	AND	#%11000000
-	ROL
-	ROL
-	ROL
+	JSR	Bank7_GetDifficulty
 	TAY
 
 	LDA	ScoreColorAdder
@@ -15028,12 +15454,7 @@ Bank7_RemoveDanmakuSkip
 	JMP	Bank7_HandleNextOne
 
 Bank7_DanmakuType2
-	CLC
-	LDA	eikiY
-	AND	#%11000000
-	ROL
-	ROL
-	ROL
+	JSR	Bank7_GetDifficulty
 	TAY
 
 	LDA	ScoreColorAdder
@@ -15149,6 +15570,9 @@ Bank7_Follow_Eiki_SetY
 	CMP	#255
 	BNE	Bank7_NoRandomForDir
 
+**	LDA	#$FF
+**	STA	$F1
+
 	JSR	Bank7_CallRandom
 	AND	#%01110000
 Bank7_NoRandomForDir
@@ -15225,12 +15649,7 @@ Bank7_DanmakuType3
 *	0-4: Danmaku X (0-32)
 *	5-7: Danmaku Extra Settings
 *
-	CLC
-	LDA	eikiY
-	AND	#%11000000
-	ROL
-	ROL
-	ROL
+	JSR	Bank7_GetDifficulty
 	TAY
 
 	LDA	Danmaku_SettingsR,x
@@ -15385,243 +15804,6 @@ Bank7_GetLevelNumberAndLSRToPoz2
 
 	RTS
 
-Bank7_NextEvent
-	JSR	Bank7_GetLevelNumberAndLSRToPoz2
-	TAX
-
-	LDA	Bank7_LevelArrayPointers,x
-	STA	temp01
-
-	LDA	Bank7_LevelArrayPointers+1,x
-	STA	temp02
-
-	LDY	LevelPointer
-
-	LDA	(temp01),y
-
-	BMI	Bank7_ItsARealEvent
-	STA	NewLoadDelay
-
-	JMP	Bank7_IncrementLevelPointer
-Bank7_ItsARealEvent
-	AND	#%01111111
-	CMP	#127
-	BNE	Bank7_NotATestReset
-	LDA	#0
-	STA	LevelPointer
-	JMP	Bank7_NextEvent
-
-Bank7_NotATestReset
-	CMP	#1
-	BNE	Bank7_NotAMessageToBeDisplayed
-Bank7_DisplayAMessage
-	LDA	MessagePointer
-	ORA	#%10000000
-	STA	MessagePointer
-	AND	#%00111111
-	TAY
-	LDA	Bank7_SpellPictureValsForMessages,y
-	STA	SpellPicture
-
-	INC	MessagePointer	
-
-	LDA	LongCounter
-	ORA	#%10000000
-
-	BIT	INPT4
-	BMI	Bank7_NotPressedFireOnSet
-
-	ORA	#%01000000
-Bank7_NotPressedFireOnSet
-	STA	LongCounter
-
-	LDA	LandScape
-	AND	#%11001111
-	ORA	#%00010000
-	STA	LandScape
-
-	LDA	#%10111100
-	STA	TextCounter
-
-	BIT	NewLoadDelay
-	BPL	Bank7_NotBossTalk
-
-	LDA	BossSettings
-	AND	#$0F
-	CMP	#2
-	BNE	Bank7_NotBossTalk
-	JMP	Bank7_ReturnFromAnything
-Bank7_NotBossTalk
-	JMP	Bank7_IncrementLevelPointer
-Bank7_NotAMessageToBeDisplayed
-*
-*	From here, its likely that some enemy will be summoned.
-*
-	SEC
-	SBC	#2
-	TAY
-
-*
-* X >= Y
-*
-* LDA	X
-* CMP	Y
-* BCC 	else
-*		
-	CPY	#120
-	BCC	Bank7_No_Boss_Summoned
-	JMP	Bank7_Set_Boss_Things
-Bank7_No_Boss_Summoned
-	LDA	NewLoadDelay
-	AND	#%01111111
-	STA	NewLoadDelay
-
-	LDA	Bank7_EnemyTypeAndStartNUSIZ,y
-	STA	EnemySettings	
-	AND	#3
-	STA	temp01
-
-	LDA	EnemySettings2
-	AND	#3
-	STA	EnemySettings2
-
-	LDA	EnemySettings
-	LSR
-	LSR
-	TAY
-*
-*LandScape = $BA
-*
-*	0-2: Counter
-*	  3: Auto Increment 
-*	4-5: Danmaku Sound
-*	  6: HoldNextLoading
-*	  7: Danmaku Shot
-*
-*MessagePointer = $BC
-*
-*	0-5: MessageID
-*	  6: IgnoreNewEventHoldFlag
-*	  7: Message is Displayed
-*
-*EnemyX = $BE 
-*DeathX = $BF
-
-StartOnTheRight = 158
-
-	LDA	LandScape
-	AND	#%10110111
-	ORA	Bank7_SetFlagsORA,y
-	STA	LandScape
-
-	LDA	MessagePointer
-	AND	#%10111111
-	STA	MessagePointer
-
-	LDA	Bank7_StartX,y
-	CMP	#0
-	BEQ	Bank7_ItsOnTheLeft
-
-	CMP	#255
-	BNE	Bank7_JustSaveX
-*
-*	These ones should be NUSIZ = $00 by default.
-*
-	JSR	Bank7_CallRandom
-	AND	#127
-	CLC
-	ADC	#31
-
-* CMP	Y
-* BCS   else 
-
-	CMP	#40
-	BCS	Bank7_RandomXLargerThan41
-	
-	LDA	#40
-	JMP	Bank7_JustSaveX
-Bank7_RandomXLargerThan41
-	JMP	Bank7_JustSaveX
-
-Bank7_ItsOnTheLeft
-	LDY	temp01
-	LDA	Bank7_StartXOnTheLeftBasedOnNUSIZ,y
-
-Bank7_JustSaveX
-	STA	EnemyX
-*
-*	Bit 7 should be 0 anyway, since this is not a boss.
-*
-	JMP	Bank7_IncrementLevelPointer
-
-Bank7_Set_Boss_Things
-*
-*	Don't have to store boss index, since it would be equal to the level number - 1.
-*
-
-	SEC
-	SBC	#120
-	TAY
-
-	LDA	NewLoadDelay
-	ORA	#%10000000
-	STA	NewLoadDelay
-
-*
-*	Bit 3: Auto Increment of Landscape
-*	Bit 6: Hold Increment of EventPointer
-*
-	LDA	LandScape
-	AND	#%10110111
-	ORA	#%01000000
-	STA	LandScape
-
-	LDA	#0
-	STA	BossSettings
-	STA	BossSettings2
-	STA	BossHP
-	STA	WastingLinesCounter
-
-	JSR	Bank7_CallRandom
-	AND	#1
-	CMP	#1
-	BEQ	Bank7_StartBossXOnTheRight
-
-****	LDA	#24
-	LDA	#33
-	JMP	Bank7_StartedBossOnLeft
-Bank7_StartBossXOnTheRight
-	LDA	#StartOnTheRight
-***	ADC	#16
-Bank7_StartedBossOnLeft
-	STA	EnemyX
-
-Bank7_IncrementLevelPointer
-	INC 	LevelPointer
-Bank7_ReturnFromAnything
-	LDX	temp19
-	CPX	#255
-	BNE	Bank7_ReturnNoRTS
-Bank7_Return
-	RTS
-Bank7_ReturnNoRTS
-	TXA
-	INX
-
-	TAY
-
-	ASL		
-	TAY
-
-	LDA	Bank7_Return_JumpTable,y
-   	pha
-   	lda	Bank7_Return_JumpTable+1,y
-   	pha
-   	pha
-   	pha
-
-   	jmp	bankSwitchJump
-
 Bank7_EikiWouldHit
 *
 *	Check if Eiki's shot would hit the target.
@@ -15687,7 +15869,7 @@ Bank7_HandTheEnemy
 Bank7_EikiDoesMagic
 	STA	temp05
 
-	LDY	#0
+***	LDY	#0
 
 	LDA	#8
 	STA	temp03
@@ -15830,15 +16012,10 @@ Bank7_Behavour_0
 ReverseRandomNum = 130
 ShootRandomNum = 165
 
-	CLC
 *
 *	Get the difficulty.
 *
-	LDA	eikiY
-	ROL
-	ROL
-	ROL
-	AND	#3
+	JSR	Bank7_GetDifficulty
 	TAY
 
 	LDA	counter
@@ -16062,13 +16239,7 @@ Bank7_Behavour_1
 *	6-7: Free to use state
 * 
 
-	CLC
-
-	LDA	eikiY
-	AND	#%11000000
-	ROL
-	ROL
-	ROL
+	JSR	Bank7_GetDifficulty
 	TAX	
 
 	LDA	counter
@@ -16215,11 +16386,7 @@ Bank7_Behavour_2
 *	Counter is used for rise, sprite animation and sink.
 *	States: 0: Rise, 1: Shoot, 2: Sink
 *
-	LDA	eikiY
-	ROL
-	ROL
-	ROL
-	AND	#3
+	JSR	Bank7_GetDifficulty
 	TAY
 
 	LDA	counter
@@ -16351,7 +16518,11 @@ Bank7_Ghost_Behave_2
 	JMP	Bank7_ReturnFromAnything
 
 Bank7_SetBossSprite
-	ORA	BossSettings2
+	STA	temp01
+
+	LDA	BossSettings2
+	AND	#%11111000
+	ORA	temp01
 	STA	BossSettings2
 
 	JSR	Bank7_GetLevelNumberAndLSRToPoz2
@@ -16386,26 +16557,79 @@ Bank7_SetBossSprite
 Bank7_HandleTheBoss
 ***	JMP	Bank7_ReturnFromAnything
 
+	LDA	#12
+	BIT	eikiSettings
+	BVS	Bank7_EikiDoesMagic_Boss
+
+	LDA	StickBuffer
+	BPL	Bank7_NoBulletOnTop_Boss
+	LDA	#6
+Bank7_EikiDoesMagic_Boss
+
+	LDA	BossSettings
+	AND	#$0F
+	CMP	#3
+	BCC	Bank7_NoBulletOnTop_Boss
+
+	CMP	#14
+	BCS	Bank7_NoBulletOnTop_Boss
+
+	LDA	#16
+	STA	temp03
+
+	LDA	EnemyX
+	STA	temp02
+
+	LDY	#1
+	JSR	Bank7_EikiWouldHit
+	CPY	#1		
+	BNE	Bank7_NoBulletOnTop_Boss
+
+	LDA	#$1A
+	STA	BossBackColor
+
+	JSR	Bank7_GetLevelNumberAndLSRToPoz2
+	LSR
+	TAY
+
 	LDA	BossSettings2
-	AND	#%11111000
+	CLC	
+	ADC	#64
 	STA	BossSettings2
 
+	AND	#%11000000
+	CMP	Bank7_BossBufferLimitOnStage,y
+	BNE	Bank7_NoBulletOnTop_Boss
+
+	LDA	BossSettings2
+	AND	#%00111111
+	STA	BossSettings2
+
+	LDA	BossHP
+	SEC
+	SBC	#1
+	BCS	Bank7_JustSaveDecrementedLife
+
+	LDA	#0
+
+Bank7_JustSaveDecrementedLife
+	STA	BossHP
+
+Bank7_NoBulletOnTop_Boss
 	LDA	BossSettings
 	AND	#$F0
 	CMP	#0
 	BEQ	Bank7_No_Boss_Cooldown
 
+	LDA	BossSettings
 	SEC
 	SBC	#$10
-	STA	temp01
-
-	LDA	BossSettings
-	AND	#$0F
-	ORA	temp01
 	STA	BossSettings
+
 	JMP	Bank7_Nothing_Changes	
 
 Bank7_No_Boss_Cooldown
+
 	LDA	BossSettings
 	AND	#$0F
 	ASL
@@ -16427,24 +16651,92 @@ LandScape_Lines_From1 = 15
 	LDA	counter
 	AND	#1
 	CMP	#1
-	BNE	Bank7_Nothing_Changes
+	BNE	Bank7_NoINCofBState
 
 	INC	WastingLinesCounter
 	LDA	WastingLinesCounter
 	CMP	#LandScape_Lines_From1
-	BNE	Bank7_Nothing_Changes
+	BNE	Bank7_NoINCofBState
 
-	LDA	#0
-	STA	Bank7_Nothing_Changes
 	INC	BossSettings
+
+Bank7_NoINCofBState
+	JMP	Bank7_ReturnFromAnything
+
 Bank7_Nothing_Changes
 	LDA	BossSettings2
 	AND	#7
-	CMP	#4
+	CMP	#3
+
 	BCS	Bank7_NotStandingStill
 	LDA	temp16
+	JMP	Bank7_Stands_Still
 Bank7_NotStandingStill
+*
+* X < Y
+* LDA	X	
+* CMP	Y
+* BCS   else 	 
+*
+* X <= Y
+*
+* LDA	Y
+* CMP	X
+* BCC	else
+*
+* X > Y 
+*
+* LDA	Y
+* CMP	X
+* BCS	else
+*
+* X >= Y
+*
+* LDA	X
+* CMP	Y
+* BCC 	else
+*	
+
+
+	BEQ	Bank7_Boss_Go_Left
+Bank7_Boss_Go_Right
+	JSR	Bank7_GetDifficulty
+	TAY
+Bank7_Boss_Go_Right1
+	LDA	Bank7_Boss_Speed_On_Diff,y
+	STA	temp01
+
+Bank7_Boss_Go_Right2
+	LDA 	EnemyX
+	CLC
+	ADC	temp01
 	
+	CMP	#StartOnTheRight
+	BCS	Bank7_Boss_Go_Left2
+	STA	EnemyX
+
+	LDA	#4
+	JMP	Bank7_Boss_DoneMovement
+Bank7_Boss_Go_Left
+	JSR	Bank7_GetDifficulty
+	TAY
+Bank7_Boss_Go_Left1
+	LDA	Bank7_Boss_Speed_On_Diff,y
+	STA	temp01
+
+Bank7_Boss_Go_Left2
+	LDA 	EnemyX
+	SEC
+	SBC	temp01
+****	STA	temp01
+
+	CMP	#BossOnTheLeft
+	BCC	Bank7_Boss_Go_Right2
+	STA	EnemyX
+
+	LDA	#3
+Bank7_Boss_DoneMovement
+Bank7_Stands_Still	
 	JSR	Bank7_SetBossSprite
 	JMP	Bank7_ReturnFromAnything
 *
@@ -16526,6 +16818,16 @@ Bank7_HP_Is_Full
 Bank7_NoINCofState
 
 	JMP	Bank7_ReturnFromAnything
+
+Bank7_GetDifficulty
+	CLC
+	LDA	eikiY
+	AND	#%11000000
+	ROL
+	ROL
+	ROL
+	RTS
+
 *
 *	Boss State 2 is all about intro messages.
 *
@@ -16552,20 +16854,98 @@ Bank7_Boss_State_2
 	ORA	temp01
 	STA	BossSettings2
 
-	JMP	Bank7_DisplayAMessage
+	lda	#>(Bank6_DisplayAMessage-1)
+  	pha
+ 	lda	#<(Bank6_DisplayAMessage-1)
+
+   	pha
+   	pha
+   	pha
+   	ldx	#6
+
+***	LDA	#0
+***	STA	temp19
+
+   	jmp	bankSwitchJump
+
+****	JMP	Bank7_DisplayAMessage
 
 Bank7_NoMoreMessages
 	INC	BossSettings
 	JMP	Bank7_ReturnFromAnything
 
-
-
 *
 *	Non-spell attack
 *
 Bank7_Boss_State_3
+	JSR	Bank7_GetLevelNumberAndLSRToPoz2
+	TAX
+	
+	LDA	Bank7_Boss_Nonspell_Pointers,x
+	STA	temp01
 
-	JMP	Bank7_Nothing_Changes
+	LDA	Bank7_Boss_Nonspell_Pointers+1,x
+	STA	temp02
+
+	JMP	(temp01)
+
+Bank7_Komachi_NonSpell
+	JSR	Bank7_GetDifficulty
+	TAY
+
+	LDA	Bank7_BossCoolDownOnDiff,y
+	ORA	BossSettings
+	STA	BossSettings 
+
+	JSR	Bank7_CallRandom
+	AND	#15
+	TAX
+	AND	#4
+	CMP	#4
+	BEQ	Bank7_Komachi_DropBasicDanmaku
+
+	TXA
+	AND	#2
+	CMP	#2
+	BEQ	Bank7_Komachi_GoesRandom
+
+	LDA	eikiX
+	AND	#127
+	CLC
+	ADC	#43
+	CMP	EnemyX
+	BCS  	Bank7_Boss_Go_Right1
+	JMP	Bank7_Boss_Go_Left1
+
+Bank7_Komachi_GoesRandom
+	TXA
+	AND	#1
+	CMP	#1
+	BEQ	Bank7_Boss_Go_Right1
+	JMP	Bank7_Boss_Go_Left1
+
+Bank7_Komachi_DropBasicDanmaku
+	LDA	temp16
+	JSR	Bank7_SetBossSprite
+
+	LDY	#1
+	LDA	#255
+	STA	temp08
+	STY	temp09
+	
+	TXA
+***	STA	$F1
+	AND	#8
+	CLC
+	ADC	#16
+	ASL
+	ORA	#$0F
+
+***	LDA	#$3F
+***	LDA	#$1F
+	STA	temp01
+	JMP	Bank7_SummonedAtEnemyX
+
 
 Bank7_CallRandom
 	LDA	random
@@ -16574,60 +16954,34 @@ Bank7_CallRandom
 	EOR	#$d4
 	STA	random
 	rts
-*
-*	Data Structure for the level array.
-*	One level can have 255 lines.
-*
-*	0XXXXXXX - This means a wait of a max of 127 frames. 
-*	1YYYYYYY - This means YYYYY (max 127 kind) of events.
-*
-*	Types:
-*	-------
-*	000: 	End of Level
-*	001: 	Display a character message based on MessagePointer. The pointer is incremented after afterwards.
-*
-*	002: 	Summons a basic soul enemy on the right	
-*	003: 	Summons a basic soul enemy on the left	
-*	004: 	Summons two basic souls close on the right
-*	005: 	Summons two basic souls close on the left
-*	006: 	Summons two basic souls with a gap on the right
-*	007: 	Summons two basic souls with a gap on the left
-*	008: 	Summons three basic souls the right
-*	009: 	Summons three basic souls the left
-*
-*	010:	Summons two skulls with small gap on the right
-*	011:	Summons two skulls with small gap on the left
-*	012:	Summons two skulls with large gap on the right
-*	013:	Summons two skulls with large gap on the left
-*	014:	Summons three skulls on the right
-*	015:	Summons three skulls on the left
-*
-*	016:	Summons a ghost at random
-*
-*	120: 	Summons Komachi
-*	121:	Summons Cirnobyl
-*	122:	Summons Rumia
-*	123:	Summons Sariel
-*
-*	127:    Init LevelCounter to Zero (only for testing)
-*
-*	SpellPictureValues:
-*	-------------------
-*	 00:	Eiki
-*	 01:	Komachi
-*	 02: 	Cirnobyl
-*	 03:	Rumia
-*	 04:	Sariel
-*
-
 
 *
 *	Data Section
 *
 
-	_align	1
-Bank7_Boss_Damage_Multi
-	BYTE	#4
+	_align	4
+Bank7_BossBufferLimitOnStage
+	BYTE	#%01000000
+	BYTE	#%10000000
+	BYTE	#%10000000
+	BYTE	#%11000000
+
+	_align	2
+Bank7_Boss_Nonspell_Pointers
+	BYTE	#<Bank7_Komachi_NonSpell
+	BYTE	#>Bank7_Komachi_NonSpell
+
+	_align	4
+Bank7_BossCoolDownOnDiff
+	BYTE	#$F0
+	BYTE	#$E0
+	BYTE	#$C0
+	BYTE	#$90
+
+	_align	2
+Bank7_BossStartOnRandom
+	BYTE	#BossOnTheLeft
+	BYTE	#StartOnTheRight
 
 	_align	2
 Bank7_Boss_SpellCard_Change_Pointers
@@ -16714,6 +17068,13 @@ Bank7_Enemy_Speed_On_Diff
 	BYTE	#2
 	BYTE	#2
 	BYTE	#3
+
+	_align	4
+Bank7_Boss_Speed_On_Diff
+	BYTE	#1
+	BYTE	#1
+	BYTE	#2
+	BYTE	#2
 
 	_align	3
 Bank7_GetNewNUSIZIf3
@@ -16869,132 +17230,9 @@ Bank7_PointsOnType
 	BYTE	#2
 	BYTE	#3
 
-*
-*	If 0, start on the left depending on NUSIZ
-*	If 255, calculate random.
-*
-*	Based on EnemyTypeAndStartNUSIZ.
-*
-
-	_align  5
-Bank7_StartX
- 	BYTE	#0
- 	BYTE	#StartOnTheRight
- 	BYTE	#0
- 	BYTE	#StartOnTheRight
-	BYTE	#255
-*
-*	Bit 3: Auto Increment of Landscape
-*	Bit 6: Hold Increment of EventPointer
-*
-*	Based on EnemyTypeAndStartNUSIZ.
-*
-*
-*	Based on the levelArray value.
-*
-	_align	5
-Bank7_SetFlagsORA
-	BYTE	#%01001000
-	BYTE	#%01001000
-	BYTE	#%01001000
-	BYTE	#%01001000
-	BYTE	#%01001000
-*
-*	Type #00: Soul(s), 	moving from left to right
-*	Type #01: Soul(s), 	moving from rigth to left
-*	Type #02: Skulls,  	moving from left to right
-*	Type #03: Skulls, 	moving from rigth to left
-*	Type #04: Ghost		appear at random, rises and sinks
-*
-*	Based on levelArray.
-*
-	_align	14
-Bank7_EnemyTypeAndStartNUSIZ
-	BYTE	#%00000000	; One soul on the left 			%10000010	1
-	BYTE	#%00000100	; One soul on the right			%10000011	1
-	BYTE	#%00000001	; Two souls on the left (small gap)	%10000100	3	
-	BYTE	#%00000101	; Two souls on the right(small gap)	%10000101	0
-	BYTE	#%00000010	; Two souls on the left (huge gap)	%10000110	0
-	BYTE	#%00000110	; Two souls on the right(huge gap)	%10000111	1
-	BYTE	#%00000011	; Three souls on the left		%10001000	1
-	BYTE	#%00000111	; Three souls on the right		%10001001	1
-	BYTE	#%00001001	; Two skulls on the left (small gap)	%10001010	1
-	BYTE	#%00001101	; Two skulls on the right (small gap)	%10001011	1
-	BYTE	#%00001010	; Two skulls on the left (huge gap)	%10001100	2
-	BYTE	#%00001110	; Two skulls on the right (huge gap)	%10001101	1
-	BYTE	#%00001011	; Three skulls on the left 		%10001110	1
-	BYTE	#%00001111	; Three skulls on the right 		%10001111	1
-	BYTE	#%00010000	; Ghost summoned at random		%10010000	3 	
-
-	_align	4
-Bank7_SpellPictureValsForMessages
-	BYTE	#$0F		; Eiki,	     Level 1 start
-	BYTE	#$1F		; Komachi,   Level 1 Boss #1
-	BYTE	#$0F		; Eiki,      Level 1 Boss #2
-	BYTE	#$1F		; Komachi,   Level 1 Boss #3
-	BYTE	#$0F		; Eiki,      Level 1 Boss #4
-
-	_align	2
-Bank7_LevelArrayPointers
-	BYTE	#<Bank7_LevelArray_1
-	BYTE	#>Bank7_LevelArray_1
-
 	_align	1
 Bank7_NumberOfMessagesOnBossIntro
 	BYTE	#4
-
-	_align	128
-Bank7_LevelArray_1
-	BYTE	#%10000001	; Display next
-	BYTE	#16
-
-****	Testing
-**	BYTE	#%10010000	; Ghost summoned at random
-**	BYTE	#%11111010	; Summon Komachi (LVL 1 boss)
-
-	BYTE	#%10000011	; Summon a soul from left to right
-	BYTE	#16
-	BYTE	#%10000010	; Summon a soul from right to left
-	BYTE	#8
-	BYTE	#%10000111	; Summons two souls on the right with huge gap
-	BYTE	#2
-	BYTE	#%10000100	; Summons two souls on left (small gap)
-	BYTE	#%10001000	; Summons three souls on left
-	BYTE	#%10001011	; Two skulls on the right (small gap)
-	BYTE	#%10001111	; Three skulls on the right 
-	BYTE	#%10001110	; Three skulls on the left 
-	BYTE	#%10001100	; Two skulls on the left (huge gap)	
-	BYTE	#%10001001	; Three souls on the right
-	BYTE	#%10000100	; Two souls on the left (small gap)
-	BYTE	#32
-	BYTE	#%10010000	; Ghost summoned at random
-	BYTE	#16
-	BYTE	#%10010000	; Ghost summoned at random
-	BYTE	#8
-	BYTE	#%10010000	; Ghost summoned at random
-	BYTE	#%10001101	; Two skulls on the right (huge gap)
-	BYTE	#%10001100	; Two skulls on the left (huge gap)
-	BYTE	#%10001001	; Three souls on the right
-	BYTE	#%10000100	; Summons two souls on left (small gap)
-	BYTE	#%10010000	; Ghost summoned at random
-	BYTE	#8
-	BYTE	#%10010000	; Ghost summoned at random
-	BYTE	#8
-	BYTE	#%10000101	; Two souls on the right(small gap)
-	BYTE	#%10000110	; Two souls on the left (huge gap)
-	BYTE	#8
-	BYTE	#%10001100	; Two skulls on the left (huge gap)
-	BYTE	#%10001101	; Two skulls on the right (huge gap)
-	BYTE	#%10001111	; Three skulls on the right 
-	BYTE	#%10001110	; Three skulls on the left 
-	BYTE	#%10010000	; Ghost summoned at random
-	BYTE	#8
-	BYTE	#%10010000	; Ghost summoned at random
-	BYTE	#16
-	BYTE	#%11111010	; Summon Komachi (LVL 1 boss)
-
-	BYTE	#127
-	BYTE	#%11111111	; Test Reset
 
 	_align	4
 Bank7_DanmakuSound
@@ -17005,17 +17243,26 @@ Bank7_DanmakuSound
 
 	_align	9
 Bank7_Danmaku_Type2_Morph
-	BYTE	#$70
-	BYTE	#$00
-	BYTE	#$10
+**	BYTE	#$70
+**	BYTE	#$00
+**	BYTE	#$10
+
+	BYTE	#$50
+	BYTE	#$40
+	BYTE	#$30
 
 	BYTE	#$60
 	BYTE	#$FF
 	BYTE	#$20
 	
-	BYTE	#$50
-	BYTE	#$40
-	BYTE	#$30
+**	BYTE	#$50
+**	BYTE	#$40
+**	BYTE	#$30
+
+	BYTE	#$70
+	BYTE	#$00
+	BYTE	#$10
+
 
 	_align	4
 Bank7_Danmaku_Speed_Delay
