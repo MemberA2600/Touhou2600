@@ -276,7 +276,8 @@ BossSettings2 = $CA
 WastingLinesCounter = $CB
 *
 *	0-3: Counter
-*	4-7: FREE
+*	  4: Play Boss Spellcard Sound
+*	5-7: FREE
 *
 
 DynamicBossColor = $D7
@@ -295,9 +296,9 @@ StickColor = $30
 	LDA	#$52
 	STA	LivesAndBombs
 
-****	LDA	#%10000000
+	LDA	#%10000000
 ****	LDA	#%11000000
-	LDA	#%01000000
+****	LDA	#%01000000
 	STA	eikiY
 
 	LDA	#%00100000
@@ -479,8 +480,8 @@ OverScanBank1
 * begins.
 *
 
-	LDA	#$0e
-	STA	DanmakuColor
+**	LDA	#$0e
+**	STA	DanmakuColor
 
 	LDA	SpellPicture
 	AND	#$0F
@@ -1400,11 +1401,11 @@ Bank1_EnemyStuff
 	LDA	EnemyBackColor
 	AND	#$0F
 	CMP	#$0F
-	BNE	Bank7_NoZeroEnemyBackColor
+	BNE	Bank1_NoZeroEnemyBackColor
 
 	LDA	#$00
 	STA	EnemyBackColor 
-Bank7_NoZeroEnemyBackColor
+Bank1_NoZeroEnemyBackColor
 
 	BIT	MessagePointer
 	BMI	Bank1_MessageGameOverSpell
@@ -1567,6 +1568,29 @@ Bank1_DontIncrementBoom
 	ORA	temp01
 	STA	LandScape
 Bank1_NoLandScapeStuff
+
+	LDA	WastingLinesCounter
+	AND	#%00010000	
+	CMP	#%00010000
+	BNE	Bank1_No_Enemy_Spell_Sound	
+
+	LDA	#%01100000
+	STA	temp18
+	LDA	#255
+	STA	temp19
+
+	JSR	Bank1_SoundPlayer
+
+	LDA	#$80
+	STA	temp18
+
+	JSR	Bank1_SoundPlayer
+
+	LDA	WastingLinesCounter
+	AND	#%11101111
+	STA	WastingLinesCounter
+
+Bank1_No_Enemy_Spell_Sound
 
 *VSYNC
 *----------------------------7
@@ -15591,7 +15615,7 @@ Bank7_NoRandomForDir
 
 	LDA	Danmaku_NumR
 	SEC
-	SBC	#1
+	SBC	#2
 	STA	Danmaku_NumW
 
 	JMP	Bank7_DanmakuType1
@@ -16629,11 +16653,77 @@ Bank7_NoBulletOnTop_Boss
 	JMP	Bank7_Nothing_Changes	
 
 Bank7_No_Boss_Cooldown
+	JSR	Bank7_GetLevelNumberAndLSRToPoz2
+	TAX
+
+	LDA	LevelAndCharge
+	STA	$F2
+
+	STX	temp04
 
 	LDA	BossSettings
 	AND	#$0F
 	ASL
 	TAY	
+	STY	temp05
+
+	LSR
+	SEC	
+	SBC	#3
+	BMI	Bank7_BossStateIsUnder3
+	STA	temp03
+
+	CPY	#14
+	BCS	Bank7_BossIsDead
+
+	LDA	Bank7_Boss_SpellCard_Change_Pointers,x
+	STA	temp01
+
+	LDA	Bank7_Boss_SpellCard_Change_Pointers+1,x
+	STA	temp02
+
+	LDY	temp03
+
+	LDA	BossHP
+	CMP	(temp01),y
+	BCS	Bank7_BossHPNotSmallerThanLimit
+
+	LDA	temp04
+	CLC	
+	ADC	#2
+	ASL
+	ASL
+	ASL
+
+	ORA	#$0F
+	STA	SpellPicture
+
+**	LDA	#%01100000
+**	STA	temp18
+**	LDA	#255
+**	STA	temp19
+
+**	JSR	Bank1_SoundPlayer
+
+**	LDA	#$81
+**	STA	temp18
+
+**	JSR	Bank1_SoundPlayer
+
+	LDA	WastingLinesCounter
+	ORA	#%00010000
+	STA	WastingLinesCounter
+
+	LDA	#%00010111
+	STA	LongCounter		
+
+	INC	BossSettings	
+
+Bank7_BossHPNotSmallerThanLimit
+	LDX	temp04
+	LDY	temp05
+Bank7_BossIsDead	
+Bank7_BossStateIsUnder3
 
 	LDA	Bank7_Boss_State_Pointers,y
 	STA	temp01
@@ -16805,8 +16895,9 @@ Bank7_HP_Is_Full
 	AND	#%11100011
 	STA	temp01
 
-	JSR	Bank7_GetLevelNumberAndLSRToPoz2
-	LSR
+***	JSR	Bank7_GetLevelNumberAndLSRToPoz2
+	TXA
+***	LSR
 	TAY
 	LDA	Bank7_NumberOfMessagesOnBossIntro,y
 	ASL
@@ -16878,8 +16969,8 @@ Bank7_NoMoreMessages
 *	Non-spell attack
 *
 Bank7_Boss_State_3
-	JSR	Bank7_GetLevelNumberAndLSRToPoz2
-	TAX
+***	JSR	Bank7_GetLevelNumberAndLSRToPoz2
+***	TAX
 	
 	LDA	Bank7_Boss_Nonspell_Pointers,x
 	STA	temp01
@@ -16890,6 +16981,15 @@ Bank7_Boss_State_3
 	JMP	(temp01)
 
 Bank7_Komachi_NonSpell
+	LDA	counter
+	AND	#7
+	CLC
+	ADC	#5
+	TAY
+	LDA	Bank7_VicaVersa,y
+	ORA	#$10
+	STA	DanmakuColor
+
 	JSR	Bank7_GetDifficulty
 	TAY
 
@@ -16947,6 +17047,46 @@ Bank7_Komachi_DropBasicDanmaku
 	JMP	Bank7_SummonedAtEnemyX
 
 
+Bank7_Boss_State_4
+	LDA	Bank7_Boss_Spell_1_Pointers,x
+	STA	temp01
+
+	LDA	Bank7_Boss_Spell_1_Pointers+1,x
+	STA	temp02
+
+	JMP	(temp01)
+
+Bank7_Komachi_Spell_1
+	LDA	EnemyX
+	CMP	#BossMiddle
+	BEQ	Bank7_Boss_At_Center_Komachi_Spell_1
+*
+* X < Y
+* LDA	X	
+* CMP	Y
+* BCS   else 	 
+*
+	BCS	Bank7_BossGoesFromLeft_Komachi_Spell_1	
+	INC	EnemyX
+
+	LDA	#4	
+	JSR	Bank7_SetBossSprite
+	JMP	Bank7_BossWasNotAtCenter_Komachi_Spell_1
+Bank7_BossGoesFromLeft_Komachi_Spell_1
+	DEC	EnemyX
+
+	LDA	#3	
+	JSR	Bank7_SetBossSprite
+	JMP	Bank7_BossWasNotAtCenter_Komachi_Spell_1
+Bank7_Boss_At_Center_Komachi_Spell_1
+
+	LDA	temp16
+	JSR	Bank7_SetBossSprite
+
+Bank7_BossWasNotAtCenter_Komachi_Spell_1
+	JMP	Bank7_ReturnFromAnything
+
+
 Bank7_CallRandom
 	LDA	random
 	lsr
@@ -16958,6 +17098,26 @@ Bank7_CallRandom
 *
 *	Data Section
 *
+	_align	16
+
+Bank7_VicaVersa	
+	BYTE	#$00
+	BYTE	#$02
+	BYTE	#$04
+	BYTE	#$06
+	BYTE	#$08
+	BYTE	#$0A
+	BYTE	#$0C
+	BYTE	#$0E
+	BYTE	#$0E
+	BYTE	#$0C
+	BYTE	#$0A
+	BYTE	#$08
+	BYTE	#$06
+	BYTE	#$04
+	BYTE	#$02
+	BYTE	#$00
+
 
 	_align	4
 Bank7_BossBufferLimitOnStage
@@ -16970,6 +17130,11 @@ Bank7_BossBufferLimitOnStage
 Bank7_Boss_Nonspell_Pointers
 	BYTE	#<Bank7_Komachi_NonSpell
 	BYTE	#>Bank7_Komachi_NonSpell
+
+	_align	2
+Bank7_Boss_Spell_1_Pointers
+	BYTE	#<Bank7_Komachi_Spell_1
+	BYTE	#>Bank7_Komachi_Spell_1
 
 	_align	4
 Bank7_BossCoolDownOnDiff
@@ -17013,7 +17178,7 @@ Bank7_Boss_R_P1_PointerLists
 	BYTE	#<Bank4_Komachi_R_P1_Pointers
 	BYTE	#>Bank4_Komachi_R_P1_Pointers
 
-	_align	8
+	_align	10
 Bank7_Boss_State_Pointers
 	BYTE	#<Bank7_Boss_State_0
 	BYTE	#>Bank7_Boss_State_0
@@ -17023,6 +17188,8 @@ Bank7_Boss_State_Pointers
 	BYTE	#>Bank7_Boss_State_2
 	BYTE	#<Bank7_Boss_State_3
 	BYTE	#>Bank7_Boss_State_3
+	BYTE	#<Bank7_Boss_State_4
+	BYTE	#>Bank7_Boss_State_4
 
 	_align	8
 Bank7_DanmakuType_Pointers
@@ -17341,7 +17508,7 @@ Bank7_DanmakuType1_MoveY
 Bank7_Danmaku_Value
 	BYTE	#0
 	BYTE	#1
-	BYTE	#2
+	BYTE	#3
 	BYTE	#3
 
 	_align	4
